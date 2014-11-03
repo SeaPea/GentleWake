@@ -1,0 +1,66 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "SeaPea Software",
+    "longName": "Gentle Wake",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/OKAction.png",
+                "name": "IMG_OKACTION",
+                "type": "png"
+            },
+            {
+                "file": "images/DownAction.png",
+                "name": "IMG_DOWNACTION",
+                "type": "png"
+            },
+            {
+                "file": "images/UpAction.png",
+                "name": "IMG_UPACTION",
+                "type": "png"
+            },
+            {
+                "file": "images/Down.png",
+                "name": "IMG_DOWN",
+                "type": "png"
+            },
+            {
+                "file": "images/Up.png",
+                "name": "IMG_UP",
+                "type": "png"
+            },
+            {
+                "file": "images/AppIcon.png",
+                "menuIcon": true,
+                "name": "IMG_APPICON",
+                "type": "png"
+            },
+            {
+                "file": "images/Snooze.png",
+                "name": "IMG_SNOOZE",
+                "type": "png"
+            },
+            {
+                "file": "images/Settings.png",
+                "name": "IMG_SETTINGS",
+                "type": "png"
+            },
+            {
+                "file": "images/Standby.png",
+                "name": "IMG_STANDBY",
+                "type": "png"
+            }
+        ]
+    },
+    "shortName": "Gentle Wake",
+    "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
+    "versionCode": 1,
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": false
+    }
+}
