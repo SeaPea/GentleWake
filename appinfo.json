@@ -9,6 +9,11 @@
     "resources": {
         "media": [
             {
+                "file": "images/NextAction.png",
+                "name": "IMG_NEXTACTION",
+                "type": "png"
+            },
+            {
                 "file": "images/OKAction.png",
                 "name": "IMG_OKACTION",
                 "type": "png"

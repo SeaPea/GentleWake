@@ -1,32 +1,30 @@
-#include "settings.h"
 #include "setalarms.h"
-#include "snoozedelay.h"
+#include "alarmtime.h"
 #include <pebble.h>
 
-#define NUM_MENU_SECTIONS 3
-#define NUM_MENU_ALARM_ITEMS 1
-#define NUM_MENU_MISC_ITEMS 2
-#define NUM_MENU_SMART_ITEMS 2
+#define NUM_MENU_SECTIONS 1
+#define NUM_MENU_ALARM_ITEMS 8
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
-static MenuLayer *settings_layer;
+static MenuLayer *alarms_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
   window_set_fullscreen(s_window, false);
   
-  // settings_layer
-  settings_layer = menu_layer_create(GRect(0, 0, 144, 152));
-  menu_layer_set_click_config_onto_window(settings_layer, s_window);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)settings_layer);
+  // alarms_layer
+  alarms_layer = menu_layer_create(GRect(0, 0, 144, 152));
+  menu_layer_set_click_config_onto_window(alarms_layer, s_window);
+  layer_add_child(window_get_root_layer(s_window), (Layer *)alarms_layer);
 }
 
 static void destroy_ui(void) {
   window_destroy(s_window);
-  menu_layer_destroy(settings_layer);
+  menu_layer_destroy(alarms_layer);
 }
 // END AUTO-GENERATED UI CODE
+
 
 // Set menu section count
 static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data) {
@@ -38,10 +36,6 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
   switch (section_index) {
     case 0:
       return NUM_MENU_ALARM_ITEMS;
-    case 1:
-      return NUM_MENU_MISC_ITEMS;
-    case 2:
-      return NUM_MENU_SMART_ITEMS;
     default:
       return 0;
   }
@@ -49,25 +43,13 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
 
 // Set default menu item height
 static int16_t menu_get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
-  switch (section_index) {
-    case 0:
-      return 0;
-    default:
-      return MENU_CELL_BASIC_HEADER_HEIGHT;
-  }
+  return MENU_CELL_BASIC_HEADER_HEIGHT;
 }
 
 // Draw menu section headers
 static void menu_draw_header_callback(GContext* ctx, const Layer *cell_layer, uint16_t section_index, void *data) {
   switch (section_index) {
     case 0:
-      menu_cell_basic_header_draw(ctx, cell_layer, NULL);
-      break;
-    case 1:
-      menu_cell_basic_header_draw(ctx, cell_layer, "Snooze Settings");
-      break;
-    case 2:
-      menu_cell_basic_header_draw(ctx, cell_layer, "Smart Alarm");
       break;
   }
 }
@@ -78,38 +60,43 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
     case 0:
       switch (cell_index->row) {
         case 0:
-          // Alarms sub-menu
-          menu_cell_basic_draw(ctx, cell_layer, "Alarms", "Mon-Fri 7:30", NULL);
-          break;
-      }
-      break;
-    
-    case 1:
-      switch (cell_index->row) {
-        case 0:
-          // Set snooze time
-          menu_cell_basic_draw(ctx, cell_layer, "Max Snooze Delay", "9 minutes", NULL);
-          break;
-
-        case 1:
-          // Enable/Disable Dynamic Snooze
-          menu_cell_basic_draw(ctx, cell_layer, "Dynamic Snooze", "ON", NULL);
-          break;
-      }
-      break;
-
-    case 2:
-      switch (cell_index->row) {
-        case 0:
-          // Enable/Disable Smart Alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Smart Alarm", "ON", NULL);
+          // Set alarm time for all days
+          menu_cell_basic_draw(ctx, cell_layer, "All Days", "7:00", NULL);
           break;
         case 1:
           // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Monitor Period", "30 minutees", NULL);
+          menu_cell_basic_draw(ctx, cell_layer, "Sunday", "OFF", NULL);
+          break;
+        case 2:
+          // Set single day alarm
+          menu_cell_basic_draw(ctx, cell_layer, "Monday", "7:30", NULL);
+          break;
+        case 3:
+          // Set single day alarm
+          menu_cell_basic_draw(ctx, cell_layer, "Tuesday", "7:30", NULL);
+          break;
+        case 4:
+          // Set single day alarm
+          menu_cell_basic_draw(ctx, cell_layer, "Wednesday", "7:30", NULL);
+          break;
+        case 5:
+          // Set single day alarm
+          menu_cell_basic_draw(ctx, cell_layer, "Thursday", "7:30", NULL);
+          break;
+        case 6:
+          // Set single day alarm
+          menu_cell_basic_draw(ctx, cell_layer, "Friday", "7:30", NULL);
+          break;
+        case 7:
+          // Set single day alarm
+          menu_cell_basic_draw(ctx, cell_layer, "Saturday", "OFF", NULL);
           break;
       }
   }
+}
+
+static void alarm_set(int day, int hour, int minute) {
+  // Update settings
 }
 
 // Process menu item select clicks
@@ -118,15 +105,10 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case 0:
       switch (cell_index->row) {
         case 0:
-          show_setalarms();
-      }
-      break;
-    case 1:
-      switch (cell_index->row) {
-        case 0:
-          show_snoozedelay();
+          show_alarmtime(-1, 7, 30, alarm_set);
           break;
       }
+      break;
   }
 
 }
@@ -136,7 +118,6 @@ static void menu_longselect_callback(MenuLayer *menu_layer, MenuIndex *cell_inde
   switch (cell_index->section) {
     case 1:
       
-      //layer_mark_dirty(menu_layer_get_layer(menu_layer));
       break;
   }
 
@@ -146,18 +127,17 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
-void show_settings(void) {
+void show_setalarms(void) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
   });
   
   // Set all the callbacks for the menu layer
-  menu_layer_set_callbacks(settings_layer, NULL, (MenuLayerCallbacks){
+  menu_layer_set_callbacks(alarms_layer, NULL, (MenuLayerCallbacks){
     .get_num_sections = menu_get_num_sections_callback,
     .get_num_rows = menu_get_num_rows_callback,
-    .get_header_height = menu_get_header_height_callback,
-    .draw_header = menu_draw_header_callback,
+    .get_header_height = NULL,
     .draw_row = menu_draw_row_callback,
     .select_click = menu_select_callback,
     .select_long_click = menu_longselect_callback
@@ -166,6 +146,6 @@ void show_settings(void) {
   window_stack_push(s_window, true);
 }
 
-void hide_settings(void) {
+void hide_setalarms(void) {
   window_stack_remove(s_window, true);
 }

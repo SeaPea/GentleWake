@@ -9,6 +9,7 @@ static GBitmap *s_res_img_settings;
 static GFont s_res_roboto_bold_subset_49;
 static GFont s_res_gothic_18_bold;
 static ActionBarLayer *action_layer;
+static TextLayer *clockbg_layer;
 static TextLayer *clock_layer;
 static TextLayer *info_layer;
 static TextLayer *onoff_layer;
@@ -30,9 +31,16 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_settings);
   layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
   
+  // clockbg_layer
+  clockbg_layer = text_layer_create(GRect(2, 52, 143, 46));
+  text_layer_set_background_color(clockbg_layer, GColorBlack);
+  text_layer_set_text_color(clockbg_layer, GColorClear);
+  text_layer_set_text(clockbg_layer, "    ");
+  layer_add_child(window_get_root_layer(s_window), (Layer *)clockbg_layer);
+  
   // clock_layer
   clock_layer = text_layer_create(GRect(0, 42, 144, 65));
-  text_layer_set_background_color(clock_layer, GColorBlack);
+  text_layer_set_background_color(clock_layer, GColorClear);
   text_layer_set_text_color(clock_layer, GColorWhite);
   text_layer_set_text(clock_layer, "23:55");
   text_layer_set_text_alignment(clock_layer, GTextAlignmentCenter);
@@ -61,6 +69,7 @@ static void initialise_ui(void) {
 static void destroy_ui(void) {
   window_destroy(s_window);
   action_bar_layer_destroy(action_layer);
+  text_layer_destroy(clockbg_layer);
   text_layer_destroy(clock_layer);
   text_layer_destroy(info_layer);
   text_layer_destroy(onoff_layer);
