@@ -1,10 +1,15 @@
 #include "alarmtime.h"
 #include <pebble.h>
 
+enum part {HOUR, MINUTE};
+  
 static int m_day;
 static int m_hour;
 static int m_minute;
-static int m_part = 1;
+static char s_hour[3];
+static char s_minute[3];
+static AlarmTimeCallBack s_set_event;
+static enum part s_selected = HOUR;
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -86,15 +91,70 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
-void update_alarmtime() {
-  char time[3];
+static void update_alarmtime() {
   
-  snprintf(time, 3, "%d", m_hour);
-  text_layer_set_text(hour_layer, time);
-  snprintf(time, 3, "%.2d", m_minute);
-  text_layer_set_text(minute_layer, time);
+  snprintf(s_hour, sizeof(s_hour), "%d", m_hour);
+  text_layer_set_text(hour_layer, s_hour);
+  snprintf(s_minute, sizeof(s_minute), "%.2d", m_minute);
+  text_layer_set_text(minute_layer, s_minute);
   
+  if (s_selected == HOUR) {
+    text_layer_set_background_color(hour_layer, GColorBlack);
+    text_layer_set_text_color(hour_layer, GColorWhite);
+    text_layer_set_background_color(minute_layer, GColorWhite);
+    text_layer_set_text_color(minute_layer, GColorBlack);
+  } else {
+    text_layer_set_background_color(hour_layer, GColorWhite);
+    text_layer_set_text_color(hour_layer, GColorBlack);
+    text_layer_set_background_color(minute_layer, GColorBlack);
+    text_layer_set_text_color(minute_layer, GColorWhite);
+  }
+}
+
+static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   
+  if (s_selected == HOUR) {
+    s_selected = MINUTE;
+    update_alarmtime();
+  } else {
+    hide_alarmtime();
+    s_set_event(m_day, m_hour, m_minute);
+  }
+  
+}
+
+static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
+  
+  if (s_selected == HOUR) {
+    ++m_hour;
+    m_hour %= 24;
+  } else {
+    ++m_minute;
+    m_minute %= 60;
+  }
+  
+  update_alarmtime();
+  
+}
+
+static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+  
+  if (s_selected == HOUR) {
+    m_hour += 23;
+    m_hour %= 24;
+  } else {
+    m_minute += 59;
+    m_minute %= 60;
+  }
+  
+  update_alarmtime();
+  
+}
+
+static void click_config_provider(void *context) {
+  window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
+  window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
+  window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
 }
 
 void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) {
@@ -103,32 +163,44 @@ void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) 
     .unload = handle_window_unload,
   });
   
+  s_selected = HOUR;
   m_day = day;
   m_hour = hour;
   m_minute = minute;
+  s_set_event = set_event;
   
   switch (day) {
     case -1:
       text_layer_set_text(day_layer, "Alarm Every Day");
+      break;
     case 0:
       text_layer_set_text(day_layer, "Sunday Alarm");
+      break;
     case 1:
       text_layer_set_text(day_layer, "Monday Alarm");
+      break;
     case 2:
       text_layer_set_text(day_layer, "Tuesday Alarm");
+      break;
     case 3:
       text_layer_set_text(day_layer, "Wednesday Alarm");
+      break;
     case 4:
       text_layer_set_text(day_layer, "Thursday Alarm");
+      break;
     case 5:
       text_layer_set_text(day_layer, "Friday Alarm");
+      break;
     case 6:
       text_layer_set_text(day_layer, "Saturday Alarm");
+      break;
     default:
       text_layer_set_text(day_layer, "");
   }
   
   update_alarmtime();
+  
+  window_set_click_config_provider(s_window, click_config_provider);
   
   window_stack_push(s_window, true);
 }

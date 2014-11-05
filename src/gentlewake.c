@@ -1,8 +1,10 @@
 #include <pebble.h>
 #include "mainwin.h"
 #include "settings.h"
+#include "common.h"
 
 static bool alarms_on = true;
+static alarm s_alarms[7];
   
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   // Snooze
@@ -14,7 +16,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  show_settings();
+  show_settings(s_alarms);
 }
 
 static void click_config_provider(void *context) {
@@ -24,6 +26,12 @@ static void click_config_provider(void *context) {
 }
 
 static void init(void) {
+  for (int i = 1; i <= 5; i++) {
+    s_alarms[i].enabled = true;
+    s_alarms[i].hour = 7;
+    s_alarms[i].minute = 30;
+  }
+  
   show_mainwin();
   init_click_events(click_config_provider);
 }

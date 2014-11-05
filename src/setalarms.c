@@ -1,9 +1,12 @@
 #include "setalarms.h"
 #include "alarmtime.h"
+#include "common.h"
 #include <pebble.h>
 
 #define NUM_MENU_SECTIONS 1
 #define NUM_MENU_ALARM_ITEMS 8
+  
+static alarm *s_alarms;
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -41,72 +44,97 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
   }
 }
 
-// Set default menu item height
-static int16_t menu_get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
-  return MENU_CELL_BASIC_HEADER_HEIGHT;
-}
-
-// Draw menu section headers
-static void menu_draw_header_callback(GContext* ctx, const Layer *cell_layer, uint16_t section_index, void *data) {
-  switch (section_index) {
-    case 0:
-      break;
-  }
+static void gen_alarm_str(alarm *alarmtime, char *alarmstr) {
+  if (alarmtime->enabled)
+    snprintf(alarmstr, 6, "%d:%.2d", alarmtime->hour, alarmtime->minute);
+  else
+    strncpy(alarmstr, "OFF", 6);
 }
 
 // Draw menu items
 static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
+  
+  bool mixed = false;
+  char daystr[10];
+  char alarmstr[6];
+  
   switch (cell_index->section) {
     case 0:
+    
       switch (cell_index->row) {
         case 0:
           // Set alarm time for all days
-          menu_cell_basic_draw(ctx, cell_layer, "All Days", "7:00", NULL);
+          for (int i = 0; i <= 5; i++) {
+            if (s_alarms[i].enabled != s_alarms[i+1].enabled ||
+                s_alarms[i].hour != s_alarms[i+1].hour ||
+                s_alarms[i].minute != s_alarms[i+1].minute) {
+              mixed = true;
+              break;
+            }
+          }
+          
+          if (mixed)
+            strncpy(alarmstr, "Mixed", 6);
+          else
+            gen_alarm_str(&s_alarms[0], alarmstr);
+        
+          menu_cell_basic_draw(ctx, cell_layer, "All Days", alarmstr, NULL);
           break;
-        case 1:
+        default:
           // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Sunday", "OFF", NULL);
-          break;
-        case 2:
-          // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Monday", "7:30", NULL);
-          break;
-        case 3:
-          // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Tuesday", "7:30", NULL);
-          break;
-        case 4:
-          // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Wednesday", "7:30", NULL);
-          break;
-        case 5:
-          // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Thursday", "7:30", NULL);
-          break;
-        case 6:
-          // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Friday", "7:30", NULL);
-          break;
-        case 7:
-          // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Saturday", "OFF", NULL);
-          break;
+          dayname(cell_index->row-1, daystr);
+          gen_alarm_str(&s_alarms[cell_index->row-1], alarmstr);
+          menu_cell_basic_draw(ctx, cell_layer, daystr, alarmstr, NULL);
       }
   }
 }
 
 static void alarm_set(int day, int hour, int minute) {
-  // Update settings
+  if (day == -1) {
+    for (int i = 0; i <= 6; i++) {
+      s_alarms[i].enabled = true;
+      s_alarms[i].hour = hour;
+      s_alarms[i].minute = minute;
+    }
+  } else {
+    s_alarms[day].enabled = true;
+    s_alarms[day].hour = hour;
+    s_alarms[day].minute = minute;
+  }
+  layer_mark_dirty(menu_layer_get_layer(alarms_layer));
 }
 
 // Process menu item select clicks
 static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
+  bool mixed = false;
+  
   switch (cell_index->section) {
     case 0:
       switch (cell_index->row) {
         case 0:
-          show_alarmtime(-1, 7, 30, alarm_set);
+          for (int i = 0; i <= 5; i++) {
+            if (s_alarms[i].enabled != s_alarms[i+1].enabled ||
+                s_alarms[i].hour != s_alarms[i+1].hour ||
+                s_alarms[i].minute != s_alarms[i+1].minute) {
+              mixed = true;
+              break;
+            }
+          }
+        
+          if (mixed)
+            show_alarmtime(-1, 7, 0, alarm_set);
+          else
+            show_alarmtime(-1, 
+                           s_alarms[0].enabled ? s_alarms[0].hour : 7, 
+                           s_alarms[0].enabled ? s_alarms[0].minute : 0, 
+                           alarm_set);
+            
           break;
+        default:
+          show_alarmtime(cell_index->row-1, 
+                         s_alarms[cell_index->row-1].enabled ? s_alarms[cell_index->row-1].hour : 7, 
+                         s_alarms[cell_index->row-1].enabled ? s_alarms[cell_index->row-1].minute : 0, 
+                         alarm_set);
       }
       break;
   }
@@ -127,11 +155,13 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
-void show_setalarms(void) {
+void show_setalarms(alarm *alarms) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
   });
+  
+  s_alarms = alarms;
   
   // Set all the callbacks for the menu layer
   menu_layer_set_callbacks(alarms_layer, NULL, (MenuLayerCallbacks){

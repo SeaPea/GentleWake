@@ -1,12 +1,15 @@
 #include "settings.h"
 #include "setalarms.h"
 #include "snoozedelay.h"
+#include "common.h"
 #include <pebble.h>
 
 #define NUM_MENU_SECTIONS 3
 #define NUM_MENU_ALARM_ITEMS 1
 #define NUM_MENU_MISC_ITEMS 2
 #define NUM_MENU_SMART_ITEMS 2
+  
+static alarm *s_alarms;
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -118,7 +121,7 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case 0:
       switch (cell_index->row) {
         case 0:
-          show_setalarms();
+          show_setalarms(s_alarms);
       }
       break;
     case 1:
@@ -146,11 +149,13 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
-void show_settings(void) {
+void show_settings(alarm *alarms) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
   });
+  
+  s_alarms = alarms;
   
   // Set all the callbacks for the menu layer
   menu_layer_set_callbacks(settings_layer, NULL, (MenuLayerCallbacks){
