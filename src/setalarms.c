@@ -44,6 +44,19 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
   }
 }
 
+static bool is_alarms_mixed() {
+  for (int i = 0; i <= 5; i++) {
+    if (s_alarms[i].enabled != s_alarms[i+1].enabled ||
+        (s_alarms[i+1].enabled && 
+         (s_alarms[i].hour != s_alarms[i+1].hour ||
+          s_alarms[i].minute != s_alarms[i+1].minute))) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 static void gen_alarm_str(alarm *alarmtime, char *alarmstr) {
   if (alarmtime->enabled)
     snprintf(alarmstr, 6, "%d:%.2d", alarmtime->hour, alarmtime->minute);
@@ -54,7 +67,6 @@ static void gen_alarm_str(alarm *alarmtime, char *alarmstr) {
 // Draw menu items
 static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
   
-  bool mixed = false;
   char daystr[10];
   char alarmstr[6];
   
@@ -64,16 +76,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
       switch (cell_index->row) {
         case 0:
           // Set alarm time for all days
-          for (int i = 0; i <= 5; i++) {
-            if (s_alarms[i].enabled != s_alarms[i+1].enabled ||
-                s_alarms[i].hour != s_alarms[i+1].hour ||
-                s_alarms[i].minute != s_alarms[i+1].minute) {
-              mixed = true;
-              break;
-            }
-          }
-          
-          if (mixed)
+          if (is_alarms_mixed())
             strncpy(alarmstr, "Mixed", 6);
           else
             gen_alarm_str(&s_alarms[0], alarmstr);
@@ -112,16 +115,7 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case 0:
       switch (cell_index->row) {
         case 0:
-          for (int i = 0; i <= 5; i++) {
-            if (s_alarms[i].enabled != s_alarms[i+1].enabled ||
-                s_alarms[i].hour != s_alarms[i+1].hour ||
-                s_alarms[i].minute != s_alarms[i+1].minute) {
-              mixed = true;
-              break;
-            }
-          }
-        
-          if (mixed)
+          if (is_alarms_mixed())
             show_alarmtime(-1, 7, 0, alarm_set);
           else
             show_alarmtime(-1, 
@@ -144,8 +138,34 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
 // Process menu item long select clicks
 static void menu_longselect_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
   switch (cell_index->section) {
-    case 1:
-      
+    case 0:
+      switch (cell_index->row) {
+        case 0:
+          if (is_alarms_mixed()) {
+            for (int i = 0; i <= 6; i++)
+              s_alarms[i].enabled = false;
+          } else {
+            for (int i = 0; i <= 6; i++) {
+              if (s_alarms[i].enabled) {
+                s_alarms[i].enabled = false;
+              } else {
+                s_alarms[i].enabled = true;
+                s_alarms[i].hour = 7;
+                s_alarms[i].minute = 0;
+              }
+            }
+          }
+          break;
+        default:
+          if (s_alarms[cell_index->row-1].enabled) {
+            s_alarms[cell_index->row-1].enabled = false;
+          } else {
+            s_alarms[cell_index->row-1].enabled = true;
+            s_alarms[cell_index->row-1].hour = 7;
+            s_alarms[cell_index->row-1].minute = 0;
+          }
+      }
+      layer_mark_dirty(menu_layer_get_layer(alarms_layer));
       break;
   }
 
