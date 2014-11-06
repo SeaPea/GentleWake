@@ -77,12 +77,59 @@ static void menu_draw_header_callback(GContext* ctx, const Layer *cell_layer, ui
 
 // Draw menu items
 static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
+  char alarm_summary[15];
+  bool is_mixed = false;
+  bool all_off = true;
+  int first_day = -1;
+  int last_day = -1;
+  char first_day_str[4];
+  char last_day_str[4];
+  char alarm_str[8];
+  
   switch (cell_index->section) {
     case 0:
       switch (cell_index->row) {
         case 0:
           // Alarms sub-menu
-          menu_cell_basic_draw(ctx, cell_layer, "Alarms", "Mon-Fri 7:30", NULL);
+          for (int i = 0; i <= 6; i++) {
+            if (s_alarms[i].enabled) {
+              all_off = false;
+              break;
+            }
+          }
+          if (all_off) {
+            strncpy(alarm_summary, "All Off", sizeof(alarm_summary));
+          } else {
+            for (int i = 0; i < 6; i++) {
+              if (s_alarms[i].enabled) {
+                if (first_day == -1) {
+                  first_day = i;
+                } else if (s_alarms[i].hour != s_alarms[first_day].hour ||
+                           s_alarms[i].minute != s_alarms[first_day].minute) {
+                  is_mixed = true;
+                  break;
+                }
+              }
+            }
+            if (is_mixed) {
+              strncpy(alarm_summary, "Mixed", sizeof(alarm_summary));
+            } else {
+              first_day = -1;
+              for (int i = 0; i <= 6; i++) {
+                if (s_alarms[i].enabled && first_day == -1)
+                  first_day = i;
+                if (first_day != -1 && last_day == -1 && !s_alarms[i].enabled)
+                  last_day = i-1;
+              }
+              if (last_day == -1)
+                last_day = 6;
+              daynameshort(first_day, first_day_str, sizeof(first_day_str));
+              daynameshort(last_day, last_day_str, sizeof(last_day_str));
+              gen_alarm_str(&s_alarms[first_day], alarm_str, sizeof(alarm_str));
+              snprintf(alarm_summary, sizeof(alarm_summary), "%s-%s %s", first_day_str, last_day_str, alarm_str);
+            }
+          }
+          menu_cell_basic_draw(ctx, cell_layer, "Set Alarms", alarm_summary, NULL);
           break;
       }
       break;

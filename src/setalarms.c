@@ -57,18 +57,11 @@ static bool is_alarms_mixed() {
   return false;
 }
 
-static void gen_alarm_str(alarm *alarmtime, char *alarmstr) {
-  if (alarmtime->enabled)
-    snprintf(alarmstr, 6, "%d:%.2d", alarmtime->hour, alarmtime->minute);
-  else
-    strncpy(alarmstr, "OFF", 6);
-}
-
 // Draw menu items
 static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
   
   char daystr[10];
-  char alarmstr[6];
+  char alarmstr[8];
   
   switch (cell_index->section) {
     case 0:
@@ -79,14 +72,14 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           if (is_alarms_mixed())
             strncpy(alarmstr, "Mixed", 6);
           else
-            gen_alarm_str(&s_alarms[0], alarmstr);
+            gen_alarm_str(&s_alarms[0], alarmstr, sizeof(alarmstr));
         
           menu_cell_basic_draw(ctx, cell_layer, "All Days", alarmstr, NULL);
           break;
         default:
           // Set single day alarm
-          dayname(cell_index->row-1, daystr);
-          gen_alarm_str(&s_alarms[cell_index->row-1], alarmstr);
+          dayname(cell_index->row-1, daystr, sizeof(daystr));
+          gen_alarm_str(&s_alarms[cell_index->row-1], alarmstr, sizeof(alarmstr));
           menu_cell_basic_draw(ctx, cell_layer, daystr, alarmstr, NULL);
       }
   }
@@ -109,7 +102,6 @@ static void alarm_set(int day, int hour, int minute) {
 
 // Process menu item select clicks
 static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
-  bool mixed = false;
   
   switch (cell_index->section) {
     case 0:

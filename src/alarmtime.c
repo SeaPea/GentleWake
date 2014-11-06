@@ -1,4 +1,5 @@
 #include "alarmtime.h"
+#include "common.h"
 #include <pebble.h>
 
 enum part {HOUR, MINUTE};
@@ -10,6 +11,7 @@ static char s_hour[3];
 static char s_minute[3];
 static AlarmTimeCallBack s_set_event;
 static enum part s_selected = HOUR;
+static char alarmtitle[16];
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -23,6 +25,7 @@ static TextLayer *day_layer;
 static TextLayer *hour_layer;
 static TextLayer *sep_layer;
 static TextLayer *minute_layer;
+static TextLayer *ampm_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
@@ -72,6 +75,14 @@ static void initialise_ui(void) {
   text_layer_set_text_alignment(minute_layer, GTextAlignmentCenter);
   text_layer_set_font(minute_layer, s_res_bitham_30_black);
   layer_add_child(window_get_root_layer(s_window), (Layer *)minute_layer);
+  
+  // ampm_layer
+  ampm_layer = text_layer_create(GRect(36, 89, 52, 37));
+  text_layer_set_background_color(ampm_layer, GColorClear);
+  text_layer_set_text(ampm_layer, "PM");
+  text_layer_set_text_alignment(ampm_layer, GTextAlignmentCenter);
+  text_layer_set_font(ampm_layer, s_res_bitham_30_black);
+  layer_add_child(window_get_root_layer(s_window), (Layer *)ampm_layer);
 }
 
 static void destroy_ui(void) {
@@ -81,6 +92,7 @@ static void destroy_ui(void) {
   text_layer_destroy(hour_layer);
   text_layer_destroy(sep_layer);
   text_layer_destroy(minute_layer);
+  text_layer_destroy(ampm_layer);
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_nextaction);
   gbitmap_destroy(s_res_img_downaction);
@@ -93,7 +105,12 @@ static void handle_window_unload(Window* window) {
 
 static void update_alarmtime() {
   
-  snprintf(s_hour, sizeof(s_hour), "%d", m_hour);
+  if (clock_is_24h_style()) {
+    snprintf(s_hour, sizeof(s_hour), "%d", m_hour);
+  } else {
+    snprintf(s_hour, sizeof(s_hour), "%d", m_hour > 12 ? m_hour - 12 : m_hour == 0 ? 12 : m_hour);
+    text_layer_set_text(ampm_layer, m_hour > 12 ? "PM" : "AM");
+  }
   text_layer_set_text(hour_layer, s_hour);
   snprintf(s_minute, sizeof(s_minute), "%.2d", m_minute);
   text_layer_set_text(minute_layer, s_minute);
@@ -171,36 +188,21 @@ void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) 
   m_minute = minute;
   s_set_event = set_event;
   
+  char daystr[10];
+  
   switch (day) {
     case -1:
       text_layer_set_text(day_layer, "Alarm Every Day");
       break;
-    case 0:
-      text_layer_set_text(day_layer, "Sunday Alarm");
-      break;
-    case 1:
-      text_layer_set_text(day_layer, "Monday Alarm");
-      break;
-    case 2:
-      text_layer_set_text(day_layer, "Tuesday Alarm");
-      break;
-    case 3:
-      text_layer_set_text(day_layer, "Wednesday Alarm");
-      break;
-    case 4:
-      text_layer_set_text(day_layer, "Thursday Alarm");
-      break;
-    case 5:
-      text_layer_set_text(day_layer, "Friday Alarm");
-      break;
-    case 6:
-      text_layer_set_text(day_layer, "Saturday Alarm");
-      break;
     default:
-      text_layer_set_text(day_layer, "");
+      dayname(day, daystr, sizeof(daystr));
+      snprintf(alarmtitle, sizeof(alarmtitle), "%s Alarm", daystr);
+      text_layer_set_text(day_layer, alarmtitle);
   }
   
   update_alarmtime();
+  
+  layer_set_hidden(text_layer_get_layer(ampm_layer), clock_is_24h_style());
   
   window_set_click_config_provider(s_window, click_config_provider);
   

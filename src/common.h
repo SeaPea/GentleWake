@@ -7,4 +7,6 @@ typedef struct alarm {
     uint8_t minute;
  } __attribute__((__packed__)) alarm;
 
-void dayname(int day, char *daystr);
+void dayname(int day, char *daystr, int slen);
+void daynameshort(int day, char *daystr, int slen);
+void gen_alarm_str(alarm *alarmtime, char *alarmstr, int slen);
