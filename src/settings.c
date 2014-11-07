@@ -1,6 +1,6 @@
 #include "settings.h"
 #include "setalarms.h"
-#include "snoozedelay.h"
+#include "periodset.h"
 #include "common.h"
 #include <pebble.h>
 
@@ -10,6 +10,8 @@
 #define NUM_MENU_SMART_ITEMS 2
   
 static alarm *s_alarms;
+static struct Settings_st *s_settings;
+static AlarmChangeCallBack s_alarm_changed;
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -28,6 +30,7 @@ static void initialise_ui(void) {
 static void destroy_ui(void) {
   window_destroy(s_window);
   menu_layer_destroy(settings_layer);
+  if (s_alarm_changed != NULL) s_alarm_changed();
 }
 // END AUTO-GENERATED UI CODE
 
@@ -85,6 +88,8 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   char first_day_str[4];
   char last_day_str[4];
   char alarm_str[8];
+  char snooze_str[15];
+  char monitor_str[15];
   
   switch (cell_index->section) {
     case 0:
@@ -138,12 +143,13 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
       switch (cell_index->row) {
         case 0:
           // Set snooze time
-          menu_cell_basic_draw(ctx, cell_layer, "Max Snooze Delay", "9 minutes", NULL);
+          snprintf(snooze_str, sizeof(snooze_str), "%d minute(s)", s_settings->snooze_delay);
+          menu_cell_basic_draw(ctx, cell_layer, "Max Snooze Delay", snooze_str, NULL);
           break;
 
         case 1:
           // Enable/Disable Dynamic Snooze
-          menu_cell_basic_draw(ctx, cell_layer, "Dynamic Snooze", "ON", NULL);
+          menu_cell_basic_draw(ctx, cell_layer, "Dynamic Snooze", s_settings->dynamic_snooze ? "ON" : "OFF", NULL);
           break;
       }
       break;
@@ -152,14 +158,25 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
       switch (cell_index->row) {
         case 0:
           // Enable/Disable Smart Alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Smart Alarm", "ON", NULL);
+          menu_cell_basic_draw(ctx, cell_layer, "Smart Alarm", s_settings->smart_alarm ? "ON" : "OFF", NULL);
           break;
         case 1:
           // Set single day alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Monitor Period", "30 minutees", NULL);
+          snprintf(monitor_str, sizeof(monitor_str), "%d minute(s)", s_settings->monitor_period);
+          menu_cell_basic_draw(ctx, cell_layer, "Monitor Period", monitor_str, NULL);
           break;
       }
   }
+}
+
+static void snoozedelay_set(int minutes) {
+  s_settings->snooze_delay = minutes;
+  layer_mark_dirty(menu_layer_get_layer(settings_layer));
+}
+
+static void monitorperiod_set(int minutes) {
+  s_settings->monitor_period = minutes;
+  layer_mark_dirty(menu_layer_get_layer(settings_layer));
 }
 
 // Process menu item select clicks
@@ -174,9 +191,24 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case 1:
       switch (cell_index->row) {
         case 0:
-          show_snoozedelay();
+          show_periodset("Snooze Delay", s_settings->snooze_delay, 20, snoozedelay_set);
+          break;
+        case 1:
+          s_settings->dynamic_snooze = !s_settings->dynamic_snooze;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
+      }
+      break;
+    case 2:
+      switch (cell_index->row) {
+        case 0:
+          s_settings->smart_alarm = !s_settings->smart_alarm;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
+          break;
+        case 1:
+          show_periodset("Smart Alarm Monitor Period", s_settings->monitor_period, 60, monitorperiod_set);
           break;
       }
+      break;
   }
 
 }
@@ -196,13 +228,15 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
-void show_settings(alarm *alarms) {
+void show_settings(alarm *alarms, struct Settings_st *settings, AlarmChangeCallBack alarm_changed) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
   });
   
   s_alarms = alarms;
+  s_settings = settings;
+  s_alarm_changed = alarm_changed;
   
   // Set all the callbacks for the menu layer
   menu_layer_set_callbacks(settings_layer, NULL, (MenuLayerCallbacks){

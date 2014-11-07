@@ -143,10 +143,10 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   
   if (s_selected == HOUR) {
-    ++m_hour;
+    m_hour++;
     m_hour %= 24;
   } else {
-    ++m_minute;
+    m_minute++;
     m_minute %= 60;
   }
   

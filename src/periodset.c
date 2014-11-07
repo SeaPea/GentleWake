@@ -1,0 +1,128 @@
+#include "periodset.h"
+#include <pebble.h>
+
+static int s_minutes;
+static int s_max_minutes;
+static char s_minute_str[3];
+static PeriodSetCallBack s_set_event;
+  
+// BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
+static Window *s_window;
+static GFont s_res_bitham_30_black;
+static GFont s_res_gothic_28_bold;
+static GFont s_res_gothic_24_bold;
+static GBitmap *s_res_img_upaction;
+static GBitmap *s_res_img_okaction;
+static GBitmap *s_res_img_downaction;
+static TextLayer *minutes_layer;
+static TextLayer *unit_layer;
+static TextLayer *title_layer;
+static ActionBarLayer *action_layer;
+
+static void initialise_ui(void) {
+  s_window = window_create();
+  window_set_fullscreen(s_window, 0);
+  
+  s_res_bitham_30_black = fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
+  s_res_gothic_28_bold = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
+  s_res_gothic_24_bold = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+  s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_UPACTION);
+  s_res_img_okaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_OKACTION);
+  s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_DOWNACTION);
+  // minutes_layer
+  minutes_layer = text_layer_create(GRect(40, 63, 42, 36));
+  text_layer_set_text(minutes_layer, "10");
+  text_layer_set_text_alignment(minutes_layer, GTextAlignmentCenter);
+  text_layer_set_font(minutes_layer, s_res_bitham_30_black);
+  layer_add_child(window_get_root_layer(s_window), (Layer *)minutes_layer);
+  
+  // unit_layer
+  unit_layer = text_layer_create(GRect(22, 97, 79, 31));
+  text_layer_set_text(unit_layer, "Minutes");
+  text_layer_set_text_alignment(unit_layer, GTextAlignmentCenter);
+  text_layer_set_font(unit_layer, s_res_gothic_28_bold);
+  layer_add_child(window_get_root_layer(s_window), (Layer *)unit_layer);
+  
+  // title_layer
+  title_layer = text_layer_create(GRect(2, 12, 120, 49));
+  text_layer_set_text(title_layer, "Snooze Delay");
+  text_layer_set_text_alignment(title_layer, GTextAlignmentCenter);
+  text_layer_set_font(title_layer, s_res_gothic_24_bold);
+  layer_add_child(window_get_root_layer(s_window), (Layer *)title_layer);
+  
+  // action_layer
+  action_layer = action_bar_layer_create();
+  action_bar_layer_add_to_window(action_layer, s_window);
+  action_bar_layer_set_background_color(action_layer, GColorBlack);
+  action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_upaction);
+  action_bar_layer_set_icon(action_layer, BUTTON_ID_SELECT, s_res_img_okaction);
+  action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_downaction);
+  layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
+}
+
+static void destroy_ui(void) {
+  window_destroy(s_window);
+  text_layer_destroy(minutes_layer);
+  text_layer_destroy(unit_layer);
+  text_layer_destroy(title_layer);
+  action_bar_layer_destroy(action_layer);
+  gbitmap_destroy(s_res_img_upaction);
+  gbitmap_destroy(s_res_img_okaction);
+  gbitmap_destroy(s_res_img_downaction);
+}
+// END AUTO-GENERATED UI CODE
+
+static void handle_window_unload(Window* window) {
+  destroy_ui();
+}
+
+static void update_minutes() {
+  snprintf(s_minute_str, sizeof(s_minute_str), "%d", s_minutes);
+  text_layer_set_text(minutes_layer, s_minute_str);
+}
+
+static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
+  hide_periodset();
+  s_set_event(s_minutes);
+}
+
+static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
+  if (++s_minutes > s_max_minutes) s_minutes = 1;
+  update_minutes();
+}
+
+static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+  if (--s_minutes < 1) s_minutes = s_max_minutes;
+  update_minutes();
+}
+
+static void click_config_provider(void *context) {
+  window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
+  window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
+  window_single_repeating_click_subscribe(BUTTON_ID_UP, 50, up_click_handler);
+  window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
+  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 50, down_click_handler);
+}
+
+void show_periodset(char *title, int minutes, int max_minutes, PeriodSetCallBack set_event) {
+  initialise_ui();
+  window_set_window_handlers(s_window, (WindowHandlers) {
+    .unload = handle_window_unload,
+  });
+  
+  text_layer_set_text(title_layer, title);
+  
+  s_minutes = minutes;
+  s_max_minutes = max_minutes;
+  update_minutes();
+  
+  s_set_event = set_event;
+  
+  window_set_click_config_provider(s_window, click_config_provider);
+  
+  window_stack_push(s_window, true);
+}
+
+void hide_periodset(void) {
+  window_stack_remove(s_window, true);
+}

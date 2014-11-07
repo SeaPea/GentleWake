@@ -48,19 +48,19 @@ static void initialise_ui(void) {
   layer_add_child(window_get_root_layer(s_window), (Layer *)clock_layer);
   
   // info_layer
-  info_layer = text_layer_create(GRect(8, 114, 110, 33));
+  info_layer = text_layer_create(GRect(8, 109, 110, 40));
   text_layer_set_background_color(info_layer, GColorBlack);
   text_layer_set_text_color(info_layer, GColorWhite);
-  text_layer_set_text(info_layer, "NO ALARMS SET");
+  text_layer_set_text(info_layer, "Next Alarm: Tue 12:00AM");
   text_layer_set_text_alignment(info_layer, GTextAlignmentCenter);
   text_layer_set_font(info_layer, s_res_gothic_18_bold);
   layer_add_child(window_get_root_layer(s_window), (Layer *)info_layer);
   
   // onoff_layer
-  onoff_layer = text_layer_create(GRect(27, 17, 77, 20));
-  text_layer_set_background_color(onoff_layer, GColorClear);
+  onoff_layer = text_layer_create(GRect(3, 19, 119, 20));
+  text_layer_set_background_color(onoff_layer, GColorBlack);
   text_layer_set_text_color(onoff_layer, GColorWhite);
-  text_layer_set_text(onoff_layer, "Alarms ON");
+  text_layer_set_text(onoff_layer, "Alarms DISABLED");
   text_layer_set_text_alignment(onoff_layer, GTextAlignmentCenter);
   text_layer_set_font(onoff_layer, s_res_gothic_18_bold);
   layer_add_child(window_get_root_layer(s_window), (Layer *)onoff_layer);
@@ -89,13 +89,17 @@ void init_click_events(ClickConfigProvider click_config_provider) {
 
 void update_onoff(bool on) {
   if (on)
-    text_layer_set_text(onoff_layer, "Alarms ON");
+    text_layer_set_text(onoff_layer, "Alarms Enabled");
   else
-    text_layer_set_text(onoff_layer, "Alarms OFF");
+    text_layer_set_text(onoff_layer, "Alarms DISABLED");
 }
 
 void update_info(char* text) {
   text_layer_set_text(info_layer, text);
+}
+
+void set_info_event(LayerUpdateProc update_proc) {
+  layer_set_update_proc(text_layer_get_layer(info_layer), update_proc);
 }
 
 static void handle_window_unload(Window* window) {
