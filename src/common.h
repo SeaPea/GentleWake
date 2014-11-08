@@ -1,7 +1,7 @@
 #pragma once
 #include <pebble.h>
 
-typedef void (*AlarmChangeCallBack)();
+typedef void (*SettingsClosedCallBack)();
   
 typedef struct alarm {
     bool enabled;
@@ -16,6 +16,17 @@ struct Settings_st {
   int monitor_period;
 };
 
+typedef enum AlarmDay {
+  A_SUNDAY = 0,
+  A_MONDAY = 1,
+  A_TUESDAY = 2,
+  A_WEDNESDAY = 3,
+  A_THURSDAY = 4,
+  A_FRIDAY = 5,
+  A_SATURDAY = 6
+} AlarmDay;
+
 void dayname(int day, char *daystr, int slen);
 void daynameshort(int day, char *daystr, int slen);
 void gen_alarm_str(alarm *alarmtime, char *alarmstr, int slen);
+WeekDay ad2wd(AlarmDay alarmday);

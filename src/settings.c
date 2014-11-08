@@ -11,7 +11,7 @@
   
 static alarm *s_alarms;
 static struct Settings_st *s_settings;
-static AlarmChangeCallBack s_alarm_changed;
+static SettingsClosedCallBack s_settings_closed;
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -30,7 +30,7 @@ static void initialise_ui(void) {
 static void destroy_ui(void) {
   window_destroy(s_window);
   menu_layer_destroy(settings_layer);
-  if (s_alarm_changed != NULL) s_alarm_changed();
+  if (s_settings_closed != NULL) s_settings_closed();
 }
 // END AUTO-GENERATED UI CODE
 
@@ -105,7 +105,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           if (all_off) {
             strncpy(alarm_summary, "All Off", sizeof(alarm_summary));
           } else {
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i <= 6; i++) {
               if (s_alarms[i].enabled) {
                 if (first_day == -1) {
                   first_day = i;
@@ -191,7 +191,7 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case 1:
       switch (cell_index->row) {
         case 0:
-          show_periodset("Snooze Delay", s_settings->snooze_delay, 20, snoozedelay_set);
+          show_periodset("Snooze Delay", s_settings->snooze_delay, 3, 20, snoozedelay_set);
           break;
         case 1:
           s_settings->dynamic_snooze = !s_settings->dynamic_snooze;
@@ -205,7 +205,7 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
           layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case 1:
-          show_periodset("Smart Alarm Monitor Period", s_settings->monitor_period, 60, monitorperiod_set);
+          show_periodset("Smart Alarm Monitor Period", s_settings->monitor_period, 5, 60, monitorperiod_set);
           break;
       }
       break;
@@ -228,7 +228,7 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
-void show_settings(alarm *alarms, struct Settings_st *settings, AlarmChangeCallBack alarm_changed) {
+void show_settings(alarm *alarms, struct Settings_st *settings, SettingsClosedCallBack settings_closed) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
@@ -236,7 +236,7 @@ void show_settings(alarm *alarms, struct Settings_st *settings, AlarmChangeCallB
   
   s_alarms = alarms;
   s_settings = settings;
-  s_alarm_changed = alarm_changed;
+  s_settings_closed = settings_closed;
   
   // Set all the callbacks for the menu layer
   menu_layer_set_callbacks(settings_layer, NULL, (MenuLayerCallbacks){

@@ -1,8 +1,9 @@
 #include "periodset.h"
 #include <pebble.h>
 
-static int s_minutes;
-static int s_max_minutes;
+static int s_minutes = 0;
+static int s_min_minutes = 0;
+static int s_max_minutes = 60;
 static char s_minute_str[3];
 static PeriodSetCallBack s_set_event;
   
@@ -87,12 +88,12 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (++s_minutes > s_max_minutes) s_minutes = 1;
+  if (++s_minutes > s_max_minutes) s_minutes = s_min_minutes;
   update_minutes();
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (--s_minutes < 1) s_minutes = s_max_minutes;
+  if (--s_minutes < s_min_minutes) s_minutes = s_max_minutes;
   update_minutes();
 }
 
@@ -104,7 +105,7 @@ static void click_config_provider(void *context) {
   window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 50, down_click_handler);
 }
 
-void show_periodset(char *title, int minutes, int max_minutes, PeriodSetCallBack set_event) {
+void show_periodset(char *title, int minutes, int min_minutes, int max_minutes, PeriodSetCallBack set_event) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
@@ -113,6 +114,7 @@ void show_periodset(char *title, int minutes, int max_minutes, PeriodSetCallBack
   text_layer_set_text(title_layer, title);
   
   s_minutes = minutes;
+  s_min_minutes = min_minutes;
   s_max_minutes = max_minutes;
   update_minutes();
   

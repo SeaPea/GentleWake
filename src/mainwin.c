@@ -1,6 +1,9 @@
 #include "mainwin.h"
   
 static char current_time[] = "00:00";
+static bool s_alarms_on;
+
+static GBitmap *s_res_img_snooze;
 
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -88,6 +91,7 @@ void init_click_events(ClickConfigProvider click_config_provider) {
 }
 
 void update_onoff(bool on) {
+  s_alarms_on = on;
   if (on)
     text_layer_set_text(onoff_layer, "Alarms Enabled");
   else
@@ -98,16 +102,26 @@ void update_info(char* text) {
   text_layer_set_text(info_layer, text);
 }
 
-void set_info_event(LayerUpdateProc update_proc) {
-  layer_set_update_proc(text_layer_get_layer(info_layer), update_proc);
+void show_alarm_ui(bool on) {
+  if (on) {
+    text_layer_set_text(onoff_layer, "WAKEY! WAKEY!");
+    action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_snooze);
+    action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_snooze);
+  } else {
+    update_onoff(s_alarms_on);
+    action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_standby);
+    action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_settings);
+  }
 }
 
 static void handle_window_unload(Window* window) {
   destroy_ui();
+  gbitmap_destroy(s_res_img_snooze);
 }
 
 void show_mainwin(void) {
   initialise_ui();
+  s_res_img_snooze = gbitmap_create_with_resource(RESOURCE_ID_IMG_SNOOZE);
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
   });

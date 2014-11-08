@@ -69,3 +69,24 @@ void gen_alarm_str(alarm *alarmtime, char *alarmstr, int slen) {
     strncpy(alarmstr, "OFF", slen);
   }
 }
+
+WeekDay ad2wd(AlarmDay alarmday) {
+  switch (alarmday) {
+    case A_SUNDAY:
+      return SUNDAY;
+    case A_MONDAY:
+      return MONDAY;
+    case A_TUESDAY:
+      return TUESDAY;
+    case A_WEDNESDAY:
+      return WEDNESDAY;
+    case A_THURSDAY:
+      return THURSDAY;
+    case A_FRIDAY:
+      return FRIDAY;
+    case A_SATURDAY:
+      return SATURDAY;
+    default:
+      return TODAY;
+  }
+}
