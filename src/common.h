@@ -28,5 +28,6 @@ typedef enum AlarmDay {
 
 void dayname(int day, char *daystr, int slen);
 void daynameshort(int day, char *daystr, int slen);
+void gen_time_str(int hour, int min, char *timestr, int slen);
 void gen_alarm_str(alarm *alarmtime, char *alarmstr, int slen);
 WeekDay ad2wd(AlarmDay alarmday);
