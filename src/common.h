@@ -12,6 +12,7 @@ typedef struct alarm {
 struct Settings_st {
   int snooze_delay;
   bool dynamic_snooze;
+  bool easy_light;
   bool smart_alarm;
   int monitor_period;
 };

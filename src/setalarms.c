@@ -3,6 +3,8 @@
 #include "common.h"
 #include <pebble.h>
 
+// Screen to set alarm times
+  
 #define NUM_MENU_SECTIONS 1
 #define NUM_MENU_ALARM_ITEMS 8
   
@@ -44,6 +46,7 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
   }
 }
 
+// Indicates if alarm times or on/off are mixed between days
 static bool is_alarms_mixed() {
   for (int i = 0; i <= 5; i++) {
     if (s_alarms[i].enabled != s_alarms[i+1].enabled ||
@@ -61,7 +64,8 @@ static bool is_alarms_mixed() {
 static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
   
   char daystr[10];
-  char alarmstr[8];
+  char alarmtimestr[8];
+  char alarmstr[30];
   
   switch (cell_index->section) {
     case 0:
@@ -69,30 +73,43 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
       switch (cell_index->row) {
         case 0:
           // Set alarm time for all days
-          if (is_alarms_mixed())
-            strncpy(alarmstr, "Mixed", 6);
-          else
-            gen_alarm_str(&s_alarms[0], alarmstr, sizeof(alarmstr));
+          if (is_alarms_mixed()) {
+            strncpy(alarmstr, "Mixed - Hold to turn off", sizeof(alarmstr));
+          } else {
+            gen_alarm_str(&s_alarms[0], alarmtimestr, sizeof(alarmtimestr));
+            if (s_alarms[0].enabled)
+              snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
+            else
+              snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
+          }
         
           menu_cell_basic_draw(ctx, cell_layer, "All Days", alarmstr, NULL);
           break;
+        
         default:
           // Set single day alarm
           dayname(cell_index->row-1, daystr, sizeof(daystr));
-          gen_alarm_str(&s_alarms[cell_index->row-1], alarmstr, sizeof(alarmstr));
+          gen_alarm_str(&s_alarms[cell_index->row-1], alarmtimestr, sizeof(alarmtimestr));
+          if (s_alarms[cell_index->row-1].enabled)
+            snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
+          else
+            snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
           menu_cell_basic_draw(ctx, cell_layer, daystr, alarmstr, NULL);
       }
   }
 }
 
+// Call back from AlarmTime screen to set alarm
 static void alarm_set(int day, int hour, int minute) {
   if (day == -1) {
+    // Set all days the same
     for (int i = 0; i <= 6; i++) {
       s_alarms[i].enabled = true;
       s_alarms[i].hour = hour;
       s_alarms[i].minute = minute;
     }
   } else {
+    // Set individual day
     s_alarms[day].enabled = true;
     s_alarms[day].hour = hour;
     s_alarms[day].minute = minute;
@@ -127,7 +144,7 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
 
 }
 
-// Process menu item long select clicks
+// Process menu item long select clicks (Toggles alarms on/off)
 static void menu_longselect_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
   switch (cell_index->section) {
     case 0:
@@ -173,6 +190,7 @@ void show_setalarms(alarm *alarms) {
     .unload = handle_window_unload,
   });
   
+  // Store pointer to alarms array
   s_alarms = alarms;
   
   // Set all the callbacks for the menu layer

@@ -2,16 +2,19 @@
 #include "common.h"
 #include <pebble.h>
 
+// Screen for setting alarm times
+
+// Enum for indicating which alarm time part is selected
 enum part {HOUR, MINUTE};
   
-static int m_day;
-static int m_hour;
-static int m_minute;
-static char s_hour[3];
-static char s_minute[3];
-static AlarmTimeCallBack s_set_event;
+static int s_day;
+static int s_hour;
+static int s_minute;
+static char s_hourstr[3];
+static char s_minutestr[3];
+static char s_alarmtitle[16];
 static enum part s_selected = HOUR;
-static char alarmtitle[16];
+static AlarmTimeCallBack s_set_event;
   
 // BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
@@ -103,18 +106,20 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
+// Redraws the currently set alarm time
 static void update_alarmtime() {
   
   if (clock_is_24h_style()) {
-    snprintf(s_hour, sizeof(s_hour), "%d", m_hour);
+    snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour);
   } else {
-    snprintf(s_hour, sizeof(s_hour), "%d", m_hour > 12 ? m_hour - 12 : m_hour == 0 ? 12 : m_hour);
-    text_layer_set_text(ampm_layer, m_hour > 12 ? "PM" : "AM");
+    snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour > 12 ? s_hour - 12 : s_hour == 0 ? 12 : s_hour);
+    text_layer_set_text(ampm_layer, s_hour > 12 ? "PM" : "AM");
   }
-  text_layer_set_text(hour_layer, s_hour);
-  snprintf(s_minute, sizeof(s_minute), "%.2d", m_minute);
-  text_layer_set_text(minute_layer, s_minute);
+  text_layer_set_text(hour_layer, s_hourstr);
+  snprintf(s_minutestr, sizeof(s_minutestr), "%.2d", s_minute);
+  text_layer_set_text(minute_layer, s_minutestr);
   
+  // Invert the selected part
   if (s_selected == HOUR) {
     text_layer_set_background_color(hour_layer, GColorBlack);
     text_layer_set_text_color(hour_layer, GColorWhite);
@@ -131,11 +136,14 @@ static void update_alarmtime() {
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   
   if (s_selected == HOUR) {
+    // Move to the minute part
     s_selected = MINUTE;
     update_alarmtime();
   } else {
+    // Close this screen
     hide_alarmtime();
-    s_set_event(m_day, m_hour, m_minute);
+    // Pass the alarm day and time back
+    s_set_event(s_day, s_hour, s_minute);
   }
   
 }
@@ -143,11 +151,13 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   
   if (s_selected == HOUR) {
-    m_hour++;
-    m_hour %= 24;
+    // Increment hour (wrap around)
+    s_hour++;
+    s_hour %= 24;
   } else {
-    m_minute++;
-    m_minute %= 60;
+    // Increment minute (wrap around)
+    s_minute++;
+    s_minute %= 60;
   }
   
   update_alarmtime();
@@ -157,11 +167,13 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
   
   if (s_selected == HOUR) {
-    m_hour += 23;
-    m_hour %= 24;
+    // Decrement hour (wrap around)
+    s_hour += 23;
+    s_hour %= 24;
   } else {
-    m_minute += 59;
-    m_minute %= 60;
+    // Decrement minute (wrap around)
+    s_minute += 59;
+    s_minute %= 60;
   }
   
   update_alarmtime();
@@ -183,21 +195,25 @@ void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) 
   });
   
   s_selected = HOUR;
-  m_day = day;
-  m_hour = hour;
-  m_minute = minute;
+  // Store the passed in parameters
+  s_day = day;
+  s_hour = hour;
+  s_minute = minute;
+  
+  // Store pointer to callback for when done
   s_set_event = set_event;
   
   char daystr[10];
   
+  // Generate alarm screen time
   switch (day) {
     case -1:
       text_layer_set_text(day_layer, "Alarm Every Day");
       break;
     default:
       dayname(day, daystr, sizeof(daystr));
-      snprintf(alarmtitle, sizeof(alarmtitle), "%s Alarm", daystr);
-      text_layer_set_text(day_layer, alarmtitle);
+      snprintf(s_alarmtitle, sizeof(s_alarmtitle), "%s Alarm", daystr);
+      text_layer_set_text(day_layer, s_alarmtitle);
   }
   
   update_alarmtime();

@@ -4,10 +4,21 @@
 #include "common.h"
 #include <pebble.h>
 
+// Top-Level Settings Screen
+  
 #define NUM_MENU_SECTIONS 3
 #define NUM_MENU_ALARM_ITEMS 1
-#define NUM_MENU_MISC_ITEMS 2
+#define NUM_MENU_MISC_ITEMS 3
 #define NUM_MENU_SMART_ITEMS 2
+#define MENU_ALARM_SECTION 0
+#define MENU_MISC_SECTION 1
+#define MENU_SMART_SECTION 2
+#define MENU_ALARMS_ITEM 0
+#define MENU_SNOOZEDELAY_ITEM 0
+#define MENU_DYNAMICSNOOZE_ITEM 1
+#define MENU_EASYLIGHT_ITEM 2
+#define MENU_SMARTALARM_ITEM 0
+#define MENU_SMARTPERIOD_ITEM 1
   
 static alarm *s_alarms;
 static struct Settings_st *s_settings;
@@ -42,11 +53,11 @@ static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data
 // Set menu section item counts
 static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
   switch (section_index) {
-    case 0:
+    case MENU_ALARM_SECTION:
       return NUM_MENU_ALARM_ITEMS;
-    case 1:
+    case MENU_MISC_SECTION:
       return NUM_MENU_MISC_ITEMS;
-    case 2:
+    case MENU_SMART_SECTION:
       return NUM_MENU_SMART_ITEMS;
     default:
       return 0;
@@ -56,7 +67,7 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
 // Set default menu item height
 static int16_t menu_get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
   switch (section_index) {
-    case 0:
+    case MENU_ALARM_SECTION:
       return 0;
     default:
       return MENU_CELL_BASIC_HEADER_HEIGHT;
@@ -66,13 +77,13 @@ static int16_t menu_get_header_height_callback(MenuLayer *menu_layer, uint16_t s
 // Draw menu section headers
 static void menu_draw_header_callback(GContext* ctx, const Layer *cell_layer, uint16_t section_index, void *data) {
   switch (section_index) {
-    case 0:
+    case MENU_ALARM_SECTION:
       menu_cell_basic_header_draw(ctx, cell_layer, NULL);
       break;
-    case 1:
-      menu_cell_basic_header_draw(ctx, cell_layer, "Snooze Settings");
+    case MENU_MISC_SECTION:
+      menu_cell_basic_header_draw(ctx, cell_layer, "Misc Settings");
       break;
-    case 2:
+    case MENU_SMART_SECTION:
       menu_cell_basic_header_draw(ctx, cell_layer, "Smart Alarm");
       break;
   }
@@ -92,10 +103,12 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   char monitor_str[15];
   
   switch (cell_index->section) {
-    case 0:
+    case MENU_ALARM_SECTION:
       switch (cell_index->row) {
-        case 0:
+        case MENU_ALARMS_ITEM:
           // Alarms sub-menu
+        
+          // Determine if all alarms are off
           for (int i = 0; i <= 6; i++) {
             if (s_alarms[i].enabled) {
               all_off = false;
@@ -105,6 +118,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           if (all_off) {
             strncpy(alarm_summary, "All Off", sizeof(alarm_summary));
           } else {
+            // Check if alarm times or on/off are mixed
             for (int i = 0; i <= 6; i++) {
               if (s_alarms[i].enabled) {
                 if (first_day == -1) {
@@ -119,6 +133,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
             if (is_mixed) {
               strncpy(alarm_summary, "Mixed", sizeof(alarm_summary));
             } else {
+              // Else get the stretch of enabled alarm times and summarize it
               first_day = -1;
               for (int i = 0; i <= 6; i++) {
                 if (s_alarms[i].enabled && first_day == -1)
@@ -131,6 +146,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
               daynameshort(first_day, first_day_str, sizeof(first_day_str));
               daynameshort(last_day, last_day_str, sizeof(last_day_str));
               gen_alarm_str(&s_alarms[first_day], alarm_str, sizeof(alarm_str));
+              // Show summary e.g. "Mon-Fri 7:00"
               snprintf(alarm_summary, sizeof(alarm_summary), "%s-%s %s", first_day_str, last_day_str, alarm_str);
             }
           }
@@ -139,28 +155,34 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
       }
       break;
     
-    case 1:
+    case MENU_MISC_SECTION:
       switch (cell_index->row) {
-        case 0:
+        case MENU_SNOOZEDELAY_ITEM:
           // Set snooze time
           snprintf(snooze_str, sizeof(snooze_str), "%d minute(s)", s_settings->snooze_delay);
           menu_cell_basic_draw(ctx, cell_layer, "Max Snooze Delay", snooze_str, NULL);
           break;
 
-        case 1:
+        case MENU_DYNAMICSNOOZE_ITEM:
           // Enable/Disable Dynamic Snooze
-          menu_cell_basic_draw(ctx, cell_layer, "Dynamic Snooze", s_settings->dynamic_snooze ? "ON" : "OFF", NULL);
+          menu_cell_basic_draw(ctx, cell_layer, "Dynamic Snooze", s_settings->dynamic_snooze ? "ON - Halves delay" : "OFF", NULL);
+          break;
+        
+        case MENU_EASYLIGHT_ITEM:
+          // Enable/Disable Easy Light
+          menu_cell_basic_draw(ctx, cell_layer, "Easy Light", s_settings->easy_light ? "ON - Hold up on alarm" : "OFF", NULL);
           break;
       }
       break;
 
-    case 2:
+    case MENU_SMART_SECTION:
       switch (cell_index->row) {
-        case 0:
+        case MENU_SMARTALARM_ITEM:
           // Enable/Disable Smart Alarm
-          menu_cell_basic_draw(ctx, cell_layer, "Smart Alarm", s_settings->smart_alarm ? "ON" : "OFF", NULL);
+          menu_cell_basic_draw(ctx, cell_layer, "Smart Alarm", s_settings->smart_alarm ? "ON - Alarm on stirring" : "OFF", NULL);
           break;
-        case 1:
+        
+        case MENU_SMARTPERIOD_ITEM:
           // Set single day alarm
           snprintf(monitor_str, sizeof(monitor_str), "%d minute(s)", s_settings->monitor_period);
           menu_cell_basic_draw(ctx, cell_layer, "Monitor Period", monitor_str, NULL);
@@ -182,43 +204,39 @@ static void monitorperiod_set(int minutes) {
 // Process menu item select clicks
 static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
   switch (cell_index->section) {
-    case 0:
+    case MENU_ALARM_SECTION:
       switch (cell_index->row) {
-        case 0:
+        case MENU_ALARMS_ITEM:
           show_setalarms(s_alarms);
       }
       break;
-    case 1:
+    
+    case MENU_MISC_SECTION:
       switch (cell_index->row) {
-        case 0:
+        case MENU_SNOOZEDELAY_ITEM:
           show_periodset("Snooze Delay", s_settings->snooze_delay, 3, 20, snoozedelay_set);
           break;
-        case 1:
+        case MENU_DYNAMICSNOOZE_ITEM:
           s_settings->dynamic_snooze = !s_settings->dynamic_snooze;
           layer_mark_dirty(menu_layer_get_layer(settings_layer));
+          break;
+        case MENU_EASYLIGHT_ITEM:
+          s_settings->easy_light = !s_settings->easy_light;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
+          break;
       }
       break;
-    case 2:
+    
+    case MENU_SMART_SECTION:
       switch (cell_index->row) {
-        case 0:
+        case MENU_SMARTALARM_ITEM:
           s_settings->smart_alarm = !s_settings->smart_alarm;
           layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
-        case 1:
+        case MENU_SMARTPERIOD_ITEM:
           show_periodset("Smart Alarm Monitor Period", s_settings->monitor_period, 5, 60, monitorperiod_set);
           break;
       }
-      break;
-  }
-
-}
-
-// Process menu item long select clicks
-static void menu_longselect_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
-  switch (cell_index->section) {
-    case 1:
-      
-      //layer_mark_dirty(menu_layer_get_layer(menu_layer));
       break;
   }
 
@@ -245,8 +263,7 @@ void show_settings(alarm *alarms, struct Settings_st *settings, SettingsClosedCa
     .get_header_height = menu_get_header_height_callback,
     .draw_header = menu_draw_header_callback,
     .draw_row = menu_draw_row_callback,
-    .select_click = menu_select_callback,
-    .select_long_click = menu_longselect_callback
+    .select_click = menu_select_callback
   });
   
   window_stack_push(s_window, true);

@@ -94,10 +94,13 @@ void init_click_events(ClickConfigProvider click_config_provider) {
 
 void update_onoff(bool on) {
   s_alarms_on = on;
-  if (on)
+  if (on) {
     text_layer_set_text(onoff_layer, "Alarms Enabled");
-  else
+    layer_set_hidden(text_layer_get_layer(info_layer), false);
+  } else {
     text_layer_set_text(onoff_layer, "Alarms DISABLED");
+    layer_set_hidden(text_layer_get_layer(info_layer), true);
+  }
 }
 
 void update_info(char* text) {

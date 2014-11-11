@@ -1,6 +1,8 @@
 #include "periodset.h"
 #include <pebble.h>
 
+// Screen for setting a time period in minutes
+  
 static int s_minutes = 0;
 static int s_min_minutes = 0;
 static int s_max_minutes = 60;
@@ -83,7 +85,9 @@ static void update_minutes() {
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
+  // Close this screen
   hide_periodset();
+  // Pass back minutes value
   s_set_event(s_minutes);
 }
 
@@ -105,21 +109,27 @@ static void click_config_provider(void *context) {
   window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 50, down_click_handler);
 }
 
+// Show the time period screen with a title, current # of mininutes, min and max limits, 
+// and a call back function that is called when the select button is pressed
 void show_periodset(char *title, int minutes, int min_minutes, int max_minutes, PeriodSetCallBack set_event) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
   });
   
+  // Set the title (assumes char passed in is set statically)
   text_layer_set_text(title_layer, title);
   
+  // Store all the parameters passed in and show the current value
   s_minutes = minutes;
   s_min_minutes = min_minutes;
   s_max_minutes = max_minutes;
   update_minutes();
   
+  // Store pointer to callback function
   s_set_event = set_event;
   
+  // Trap action bar clicks
   window_set_click_config_provider(s_window, click_config_provider);
   
   window_stack_push(s_window, true);
