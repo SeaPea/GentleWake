@@ -10,7 +10,7 @@
 #define WAKEUP_REASON_ALARM 0
 #define WAKEUP_REASON_SNOOZE 1
 #define WAKEUP_REASON_MONITOR 2
-#define MOVEMENT_THRESHOLD 20000
+#define MOVEMENT_THRESHOLD 15000
 #define REST_MOVEMENT 300
   
 static bool s_alarms_on = true;
@@ -161,7 +161,11 @@ static void set_wakeup_delayed(void *data) {
       
       // Schedule the wakeup
       s_wakeup_id = wakeup_schedule(alarm_time, 
-                                    s_settings.smart_alarm ? WAKEUP_REASON_MONITOR : WAKEUP_REASON_ALARM, true);
+                                    (s_settings.smart_alarm && !s_monitoring) ? 
+                                    WAKEUP_REASON_MONITOR : WAKEUP_REASON_ALARM, true);
+      
+      // If smart alarm monitoring, update display with actual alarm time
+      if (s_monitoring) show_monitoring(alarm_time);
     }
   }
   
@@ -362,8 +366,10 @@ static void start_alarm() {
 // Timer event to unsubscribe the accelerometer service after a delay
 // (without the delay it could be called during the service callback, which crashes the app)
 static void unsub_accel_delay(void *data) {
-  accel_data_service_unsubscribe();
-  s_accel_service_sub = false;
+  if (s_accel_service_sub && !s_monitoring && ((!s_alarm_active && !s_snoozing) || !s_settings.easy_light)) {
+    accel_data_service_unsubscribe();
+    s_accel_service_sub = false;
+  }
 }
 
 // Handle accelerometer data while smart alarm is active or alarm is active/snoozing
@@ -371,23 +377,25 @@ static void unsub_accel_delay(void *data) {
 static void accel_handler(AccelData *data, uint32_t num_samples) {
   if (s_alarm_active || s_snoozing || s_monitoring) {
     if (s_alarm_active || s_snoozing) {
-      for (int i = 0; i < (int)num_samples; i++) {
-        // If watch screen is held vertically (as if looking at the time) while alarm is on or snoozing,
-        // turn the light on for a few seconds
-        if (!data[i].did_vibrate) {
-          if ((data[i].x > -1250 && data[i].x < -750) || (data[i].x > 750 && data[i].x < 1250) ||
-              (data[i].y > -1250 && data[i].y < -750)) {
-            if (!s_light_shown && (data[i].timestamp - s_last_easylight) > 3000) {
-              // Record when light was last shown and has been shown in this position
-              // so it doesn't keep coming on
-              s_last_easylight = data[i].timestamp;
-              s_light_shown = true;
-              light_enable_interaction();
-              break;
-            } 
-          } else {
-            // When watch is lowered, reset this flag
-            s_light_shown = false;
+      if (s_settings.easy_light) {
+        for (int i = 0; i < (int)num_samples; i++) {
+          // If watch screen is held vertically (as if looking at the time) while alarm is on or snoozing,
+          // turn the light on for a few seconds
+          if (!data[i].did_vibrate) {
+            if ((data[i].x > -1250 && data[i].x < -750) || (data[i].x > 750 && data[i].x < 1250) ||
+                (data[i].y > -1250 && data[i].y < -750)) {
+              if (!s_light_shown && (data[i].timestamp - s_last_easylight) > 3000) {
+                // Record when light was last shown and has been shown in this position
+                // so it doesn't keep coming on
+                s_last_easylight = data[i].timestamp;
+                s_light_shown = true;
+                light_enable_interaction();
+                break;
+              } 
+            } else {
+              // When watch is lowered, reset this flag
+              s_light_shown = false;
+            }
           }
         }
       }
@@ -462,8 +470,6 @@ static void wakeup_handler(WakeupId id, int32_t reason) {
     s_movement = 0;
     // Set wakeup for the actual alarm time in case we're dead to the world or something goes wrong during monitoring
     set_wakeup(get_next_alarm());
-    // Show monitoring with actual alarm time (wakeup IDs are just the time)
-    show_monitoring((time_t)s_wakeup_id);
   } else {
     // Activate the alarm
     start_alarm();
