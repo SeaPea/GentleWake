@@ -1,6 +1,7 @@
 #include <pebble.h>
 #include "mainwin.h"
 #include "settings.h"
+#include "stopinstructions.h"
 #include "common.h"
 
 // Main program unit
@@ -27,10 +28,11 @@ static uint64_t s_last_easylight = 0;
 static bool s_accel_service_sub = false;
 static int s_next_alarm = -1;
 static bool s_light_shown = false;
-static int s_last_x;
-static int s_last_y;
-static int s_last_z;
+static int s_last_x = 0;
+static int s_last_y = 0;
+static int s_last_z = 0;
 static int s_movement = 0;
+static bool s_loaded = false;
 
 // Vibrate alarm paterns - 2nd dimension: [next vibe delay (sec), vibe segment index, vibe segment length]
 static int vibe_patterns[24][3] = {{3, 0, 1}, {3, 0, 1}, {4, 1, 3}, {4, 1, 3}, {4, 2, 5}, {4, 2, 5}, 
@@ -53,7 +55,9 @@ enum Settings_en {
   WAKEUPID_KEY = 6,
   SNOOZECOUNT_KEY = 7,
   LASTRESETDAY_KEY = 8,
-  EASYLIGHT_KEY = 9
+  EASYLIGHT_KEY = 9,
+  SNOOZINGON_KEY = 10,
+  MONITORINGON_KEY = 11
 };
 
 // Calculate which daily alarm (if any) will be next
@@ -178,7 +182,31 @@ static void set_wakeup_delayed(void *data) {
 static void set_wakeup(int next_alarm) {
   s_next_alarm = next_alarm;
   // Delay actually setting the wakeup so the UI can update since it takes a second or 2 sometimes
-  app_timer_register(100, set_wakeup_delayed, NULL);
+  app_timer_register(250, set_wakeup_delayed, NULL);
+}
+
+// Updates global snoozing flag and saves it in case of an exit
+static void set_snoozing(bool snoozing) {
+  s_snoozing = snoozing;
+  persist_write_bool(SNOOZINGON_KEY, s_snoozing);
+}
+
+// Updates snooze count and saves it in case of an exit
+static void set_snoozecount(int snooze_count) {
+  s_snooze_count = snooze_count;
+  persist_write_int(SNOOZECOUNT_KEY, s_snooze_count);
+}
+
+// Updates global monitoring flag and saves it in case of an exit
+static void set_monitoring(bool monitoring) {
+  s_monitoring = monitoring;
+  persist_write_bool(MONITORINGON_KEY, s_monitoring);
+}
+
+// Updates last reset day and saves it in case of an exit
+static void set_lastresetday(int last_reset_day) {
+  s_last_reset_day = last_reset_day;
+  persist_write_int(LASTRESETDAY_KEY, s_last_reset_day);
 }
 
 // Turns off an active alarm or cancels a snooze and sets wakeup for next alarm
@@ -192,13 +220,10 @@ static void reset_alarm() {
   t = localtime(&temp);
   
   s_alarm_active = false;
-  s_snoozing = false;
-  s_monitoring = false;
-  s_snooze_count = 0;
-  persist_write_int(SNOOZECOUNT_KEY, s_snooze_count);
-  s_last_reset_day = t->tm_wday;
-  // Save last reset immediately in case something goes wrong
-  persist_write_int(LASTRESETDAY_KEY, s_last_reset_day);
+  set_snoozing(false);
+  set_monitoring(false);
+  set_snoozecount(0);
+  set_lastresetday(t->tm_wday);
   
   // Update UI with next alarm details
   show_alarm_ui(false);
@@ -212,10 +237,9 @@ static void reset_alarm() {
 
 // Snoozes active alarm
 static void snooze_alarm() {
-  s_snoozing = true;
-  s_snooze_count++;
-  // Save snooze count in case app closes while snoozing
-  persist_write_int(SNOOZECOUNT_KEY, s_snooze_count);
+  set_snoozing(true);
+  set_snoozecount(s_snooze_count + 1);
+  
   // Set snooze wakeup
   set_wakeup(-2);
 }
@@ -266,13 +290,26 @@ static void vibe_alarm() {
   }
 }
 
+static void save_settings_delayed(void *data) {
+  // Save all settings
+  persist_write_data(ALARMS_KEY, s_alarms, sizeof(s_alarms));
+  persist_write_int(SNOOZEDELAY_KEY, s_settings.snooze_delay);
+  persist_write_bool(DYNAMICSNOOZE_KEY, s_settings.dynamic_snooze);
+  persist_write_bool(EASYLIGHT_KEY, s_settings.easy_light);
+  persist_write_bool(SMARTALARM_KEY, s_settings.smart_alarm);
+  persist_write_int(MONITORPERIOD_KEY, s_settings.monitor_period);
+}
+
 // Callback function to indicate when the settings have been closed
 // so that various items can be updated
 static void settings_update() {
-  // Reset the last reset day in case alarms were changed
-  s_last_reset_day = -1;
-  // Save last reset immediately in case something goes wrong
-  persist_write_int(LASTRESETDAY_KEY, s_last_reset_day);
+  if (s_loaded) {
+    // Reset the last reset day in case alarms were changed
+    set_lastresetday(-1);
+    
+    // Save settings after a delay to allow UI to update
+    app_timer_register(500, save_settings_delayed, NULL);
+  }
   
   // Update next alarm info
   int next_alarm = get_next_alarm();
@@ -280,7 +317,7 @@ static void settings_update() {
   update_info(s_info);
   
   // Set next wakeup in case alarms were changed
-  set_wakeup(next_alarm);
+  if (s_loaded) set_wakeup(next_alarm);
 }
 
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -294,6 +331,8 @@ static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
       // If alarm not active, not snoozing, and not monitoring, exit app
       hide_mainwin();
     }
+  } else {
+    show_stopinstructions();
   }
 }
 
@@ -307,15 +346,22 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
     } else {
       // Turn all alarms on or off
       s_alarms_on = !s_alarms_on;
+      persist_write_bool(ALARMSON_KEY, s_alarms_on);
       update_onoff(s_alarms_on);
       set_wakeup(s_alarms_on ? get_next_alarm() : -1);
     }
+  } else {
+    show_stopinstructions();
   }
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   // Single click snoozes when alarm active, Select button single click is disabled otherwise
-  if (s_alarm_active && !s_snoozing && !s_monitoring) snooze_alarm();
+  if (!s_snoozing && !s_monitoring) {
+    if (s_alarm_active) snooze_alarm();
+  } else {
+    show_stopinstructions();
+  }
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -328,6 +374,8 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
     else
       // Show settings screen with current alarms and setings and a callback for when closed
       show_settings(s_alarms, &s_settings, settings_update);
+  } else {
+    show_stopinstructions();
   }
 }
 
@@ -352,8 +400,8 @@ static void click_config_provider(void *context) {
 // Start the alarm, including vibrating the Pebble
 static void start_alarm() {
   s_alarm_active = true;
-  s_snoozing = false;
-  s_monitoring = false;
+  set_snoozing(false);
+  set_monitoring(false);
   show_alarm_ui(true);
   // Set snooze wakeup in case app is closed with the alarm vibrating
   set_wakeup(-2);
@@ -447,23 +495,27 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
   }
 }
 
+// Start monitoring the accelerometer for either the Smart Alarm or Easy Light
+static void start_accel() {
+  if (!s_accel_service_sub) {
+    accel_data_service_subscribe(5, accel_handler);
+    accel_service_set_sampling_rate(ACCEL_SAMPLING_10HZ);
+    s_accel_service_sub = true;
+  }
+}
+
 // Handler for when the wakeup time occurs
 static void wakeup_handler(WakeupId id, int32_t reason) {
-  // Reset flags since either normal alarm or smart alarm is now active 
-  s_last_reset_day = -1;
-  persist_write_int(LASTRESETDAY_KEY, s_last_reset_day);
-  s_snoozing = false;
-  s_monitoring = false;
+  // Clear last reset day since either normal alarm or smart alarm is now active 
+  set_lastresetday(-1);
   
   if (reason != WAKEUP_REASON_SNOOZE) {
-    s_snooze_count = 0;
-    // Save zero snooze count immediately in case something goes wrong
-    persist_write_int(SNOOZECOUNT_KEY, s_snooze_count);
+    set_snoozecount(0);
   }
   
   if (reason == WAKEUP_REASON_MONITOR) {
     // Start monitoring activity for stirring
-    s_monitoring = true;
+    set_monitoring(true);
     s_last_x = 0;
     s_last_y = 0;
     s_last_z = 0;
@@ -476,10 +528,8 @@ static void wakeup_handler(WakeupId id, int32_t reason) {
   }
   
   // Monitor movement for either Smart Alarm or Easy Light
-  if (!s_accel_service_sub && (s_monitoring || s_settings.easy_light)) {
-    accel_data_service_subscribe(5, accel_handler);
-    accel_service_set_sampling_rate(ACCEL_SAMPLING_10HZ);
-    s_accel_service_sub = true;
+  if (s_monitoring || s_settings.easy_light) {
+    start_accel();
   }
 }
 
@@ -500,15 +550,15 @@ static void init(void) {
   else
     s_settings.snooze_delay = 9;
   if (persist_exists(DYNAMICSNOOZE_KEY))
-    s_settings.dynamic_snooze = persist_read_int(DYNAMICSNOOZE_KEY) == 1 ? true : false;
+    s_settings.dynamic_snooze = persist_read_bool(DYNAMICSNOOZE_KEY);
   else
     s_settings.dynamic_snooze = true;
   if (persist_exists(EASYLIGHT_KEY))
-    s_settings.easy_light = persist_read_int(EASYLIGHT_KEY) == 1 ? true : false;
+    s_settings.easy_light = persist_read_bool(EASYLIGHT_KEY);
   else
     s_settings.easy_light = true;
   if (persist_exists(SMARTALARM_KEY))
-    s_settings.smart_alarm = persist_read_int(SMARTALARM_KEY) == 1 ? true : false;
+    s_settings.smart_alarm = persist_read_bool(SMARTALARM_KEY);
   else
     s_settings.smart_alarm = true;
   if (persist_exists(MONITORPERIOD_KEY))
@@ -516,13 +566,17 @@ static void init(void) {
   else
     s_settings.monitor_period = 30;
   if (persist_exists(ALARMSON_KEY))
-    s_alarms_on = persist_read_int(ALARMSON_KEY) == 1 ? true : false;
+    s_alarms_on = persist_read_bool(ALARMSON_KEY);
   if (persist_exists(WAKEUPID_KEY))
     s_wakeup_id = persist_read_int(WAKEUPID_KEY);
   if (persist_exists(LASTRESETDAY_KEY))
     s_last_reset_day = persist_read_int(LASTRESETDAY_KEY);
   if (persist_exists(SNOOZECOUNT_KEY))
     s_snooze_count = persist_read_int(SNOOZECOUNT_KEY);
+  if (persist_exists(SNOOZINGON_KEY))
+    s_snoozing = persist_read_bool(SNOOZINGON_KEY);
+  if (persist_exists(MONITORINGON_KEY))
+    s_monitoring = persist_read_bool(MONITORINGON_KEY);
   
   // Show the main screen and update the UI
   show_mainwin();
@@ -547,19 +601,26 @@ static void init(void) {
       time_t wakeuptime = 0;
       if (s_wakeup_id == 0 || !wakeup_query(s_wakeup_id, &wakeuptime))
         set_wakeup(get_next_alarm());
+      else if (s_wakeup_id != 0) {
+        // Else if recovering from a crash or forced exit, restart any snoozing/monitoring
+        if (s_snoozing) {
+          s_alarm_active = true;
+          show_snooze((time_t)s_wakeup_id);
+          if (s_settings.easy_light) start_accel();
+        } else if (s_monitoring) {
+          show_monitoring((time_t)s_wakeup_id);
+          start_accel();
+        }
+      }
     }
   }
+  
+  s_loaded = true;
 }
 
 static void deinit(void) {
-  // Save everything that needs saving
-  persist_write_data(ALARMS_KEY, s_alarms, sizeof(s_alarms));
-  persist_write_int(SNOOZEDELAY_KEY, s_settings.snooze_delay);
-  persist_write_int(DYNAMICSNOOZE_KEY, s_settings.dynamic_snooze ? 1 : 0);
-  persist_write_int(EASYLIGHT_KEY, s_settings.easy_light ? 1 : 0);
-  persist_write_int(SMARTALARM_KEY, s_settings.smart_alarm ? 1 : 0);
-  persist_write_int(MONITORPERIOD_KEY, s_settings.monitor_period);
-  persist_write_int(ALARMSON_KEY, s_alarms_on ? 1 : 0);
+  
+  if (s_accel_service_sub) accel_data_service_unsubscribe();
   
   hide_mainwin();
 }

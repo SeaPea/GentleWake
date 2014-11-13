@@ -130,6 +130,9 @@ void show_snooze(time_t snooze_time) {
   
   snprintf(s_info, sizeof(s_info), "Until: %s\n2 clicks to stop", time_str);
   update_info(s_info);
+  
+  action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_snooze);
+  action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_snooze);
 }
 
 void show_monitoring(time_t alarm_time) {
@@ -142,6 +145,9 @@ void show_monitoring(time_t alarm_time) {
   
   snprintf(s_info, sizeof(s_info), "Alarm: %s\n2 clicks to stop", time_str);
   update_info(s_info);
+  
+  action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_snooze);
+  action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_snooze);
 }
 
 static void handle_window_unload(Window* window) {
