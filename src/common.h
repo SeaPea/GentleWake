@@ -9,12 +9,19 @@ typedef struct alarm {
     uint8_t minute;
  } __attribute__((__packed__)) alarm;
 
+typedef enum MoveSensitivity {
+  MS_LOW = 1,
+  MS_MEDIUM = 2,
+  MS_HIGH = 3
+} MoveSensitivty;
+
 struct Settings_st {
   int snooze_delay;
   bool dynamic_snooze;
   bool easy_light;
   bool smart_alarm;
   int monitor_period;
+  MoveSensitivty sensitivity;
 };
 
 typedef enum AlarmDay {

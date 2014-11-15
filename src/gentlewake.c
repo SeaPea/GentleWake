@@ -11,7 +11,9 @@
 #define WAKEUP_REASON_ALARM 0
 #define WAKEUP_REASON_SNOOZE 1
 #define WAKEUP_REASON_MONITOR 2
-#define MOVEMENT_THRESHOLD 15000
+#define MOVEMENT_THRESHOLD_LOW 10000
+#define MOVEMENT_THRESHOLD_MID 15000
+#define MOVEMENT_THRESHOLD_HIGH 20000
 #define REST_MOVEMENT 300
   
 static bool s_alarms_on = true;
@@ -57,7 +59,8 @@ enum Settings_en {
   LASTRESETDAY_KEY = 8,
   EASYLIGHT_KEY = 9,
   SNOOZINGON_KEY = 10,
-  MONITORINGON_KEY = 11
+  MONITORINGON_KEY = 11,
+  MOVESENSITIVITY_KEY = 12
 };
 
 // Calculate which daily alarm (if any) will be next
@@ -298,6 +301,7 @@ static void save_settings_delayed(void *data) {
   persist_write_bool(EASYLIGHT_KEY, s_settings.easy_light);
   persist_write_bool(SMARTALARM_KEY, s_settings.smart_alarm);
   persist_write_int(MONITORPERIOD_KEY, s_settings.monitor_period);
+  persist_write_int(MOVESENSITIVITY_KEY, s_settings.sensitivity);
 }
 
 // Callback function to indicate when the settings have been closed
@@ -480,7 +484,9 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
       if (s_movement < 0)
         // Movement counter cannot be negative
         s_movement = 0;
-      else if (s_movement > MOVEMENT_THRESHOLD)
+      else if ((s_settings.sensitivity == MS_LOW && s_movement > MOVEMENT_THRESHOLD_HIGH) ||
+               (s_settings.sensitivity == MS_MEDIUM && s_movement > MOVEMENT_THRESHOLD_MID) ||
+               (s_settings.sensitivity == MS_HIGH && s_movement > MOVEMENT_THRESHOLD_LOW))
         // If movement counter is over the threshold, activate alarm
         start_alarm();
       
@@ -565,6 +571,10 @@ static void init(void) {
     s_settings.monitor_period = persist_read_int(MONITORPERIOD_KEY);
   else
     s_settings.monitor_period = 30;
+  if (persist_exists(MOVESENSITIVITY_KEY))
+    s_settings.sensitivity = persist_read_int(MOVESENSITIVITY_KEY);
+  else
+    s_settings.sensitivity = MS_MEDIUM;
   if (persist_exists(ALARMSON_KEY))
     s_alarms_on = persist_read_bool(ALARMSON_KEY);
   if (persist_exists(WAKEUPID_KEY))

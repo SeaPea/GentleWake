@@ -9,7 +9,7 @@
 #define NUM_MENU_SECTIONS 3
 #define NUM_MENU_ALARM_ITEMS 1
 #define NUM_MENU_MISC_ITEMS 3
-#define NUM_MENU_SMART_ITEMS 2
+#define NUM_MENU_SMART_ITEMS 3
 #define MENU_ALARM_SECTION 0
 #define MENU_MISC_SECTION 1
 #define MENU_SMART_SECTION 2
@@ -19,6 +19,7 @@
 #define MENU_EASYLIGHT_ITEM 2
 #define MENU_SMARTALARM_ITEM 0
 #define MENU_SMARTPERIOD_ITEM 1
+#define MENU_MOVESENSITIVITY_ITEM 2
   
 static alarm *s_alarms;
 static struct Settings_st *s_settings;
@@ -187,6 +188,24 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           snprintf(monitor_str, sizeof(monitor_str), "%d minute(s)", s_settings->monitor_period);
           menu_cell_basic_draw(ctx, cell_layer, "Monitor Period", monitor_str, NULL);
           break;
+        
+        case MENU_MOVESENSITIVITY_ITEM:
+          // Adjust Smart Alarm movement sensitivity
+          switch (s_settings->sensitivity) {
+            case MS_LOW:
+              menu_cell_basic_draw(ctx, cell_layer, "Sensitivity", "Low", NULL);
+              break;
+            case MS_MEDIUM:
+              menu_cell_basic_draw(ctx, cell_layer, "Sensitivity", "Medium", NULL);
+              break;
+            case MS_HIGH:
+              menu_cell_basic_draw(ctx, cell_layer, "Sensitivity", "High", NULL);
+              break;
+            default:
+              menu_cell_basic_draw(ctx, cell_layer, "Sensitivity", "???", NULL);
+              break;
+          }
+          break;
       }
   }
 }
@@ -235,6 +254,10 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
           break;
         case MENU_SMARTPERIOD_ITEM:
           show_periodset("Smart Alarm Monitor Period", s_settings->monitor_period, 5, 60, monitorperiod_set);
+          break;
+        case MENU_MOVESENSITIVITY_ITEM:
+          s_settings->sensitivity = (s_settings->sensitivity == MS_HIGH ? MS_LOW : s_settings->sensitivity + 1);
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
       }
       break;
