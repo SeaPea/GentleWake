@@ -3,6 +3,7 @@
 #include "settings.h"
 #include "stopinstructions.h"
 #include "common.h"
+#include "errormsg.h"
 
 // Main program unit
   
@@ -136,6 +137,20 @@ static void set_wakeup_delayed(void *data) {
       
       // Schedule the wakeup
       s_wakeup_id = wakeup_schedule(snooze_until, WAKEUP_REASON_SNOOZE, true);
+      
+      if (s_wakeup_id < 0) {
+        // If ID is less than zero something went wrong, so clear all wakeups and try again
+        wakeup_cancel_all();
+        s_wakeup_id = wakeup_schedule(snooze_until, WAKEUP_REASON_SNOOZE, true);
+        
+        if (s_wakeup_id < 0) {
+          // If ID is still negative, show error message
+          if (s_wakeup_id == E_RANGE)
+            show_errormsg("Unable to set the snooze alarm due to another app alarm.");
+          else
+            show_errormsg("Unknown error while setting snooze alarm. A factory reset may be required if this happens again");
+        }
+      }
     } else {
       // Set wakeup for next alarm
       struct tm *t;
@@ -163,13 +178,60 @@ static void set_wakeup_delayed(void *data) {
         alarm_time -= s_settings.monitor_period == 0 ? 300 : s_settings.monitor_period * 60;
       
       // If the alarm time is in the past (setting a smart alarm for just a few minutes ahead for example)
-      // then adjust it to be 2 seconds in the future
-      if (alarm_time < curr_time) alarm_time = curr_time + 2;
+      // then adjust it to be 5 seconds in the future
+      if (alarm_time < curr_time) alarm_time = curr_time + 5;
+      
+      int wakeup_reason = (s_settings.smart_alarm && !s_monitoring) ? WAKEUP_REASON_MONITOR : WAKEUP_REASON_ALARM;
       
       // Schedule the wakeup
-      s_wakeup_id = wakeup_schedule(alarm_time, 
-                                    (s_settings.smart_alarm && !s_monitoring) ? 
-                                    WAKEUP_REASON_MONITOR : WAKEUP_REASON_ALARM, true);
+      s_wakeup_id = wakeup_schedule(alarm_time, wakeup_reason, true);
+      
+      if (s_wakeup_id < 0) {
+        // If ID is negative, something went wrong, so make sure all wakeups for this app are cancelled and 
+        // try again
+        wakeup_cancel_all();
+        s_wakeup_id = wakeup_schedule(alarm_time, wakeup_reason, true);
+        
+        if (s_wakeup_id == E_RANGE) {
+          // E_RANGE means some other app has the same wakeup time +/- 1 minute, so try to set
+          // the wakeup for an earlier/later time up to 5 minutes before/after.
+          int try_count = 0;
+          int diff = 0;
+          
+          if (alarm_time < curr_time + 360)
+            // If alarm time less than 6 minutes in the future, try for later time
+            diff = 60;
+          else
+            // else try for earlier time
+            diff = -60;
+          
+          // Adjust wakeup in 1 minute decrements up to 5 minutes before/after
+          while (s_wakeup_id == E_RANGE && try_count++ < 5) {
+            alarm_time += diff;
+            
+            s_wakeup_id = wakeup_schedule(alarm_time, wakeup_reason, true);
+          }
+        }
+        
+        if (s_wakeup_id < 0) {
+          // If ID is still negative, show error message
+          if (s_wakeup_id == E_RANGE) {
+            char msg[150];
+            char daystr[10];
+            char timestr[8];
+            
+            dayname(next_alarm, daystr, sizeof(daystr));
+            gen_time_str(t->tm_hour, t->tm_min, timestr, sizeof(timestr));
+            snprintf(msg, sizeof(msg), 
+                     "Another wakeup is set for %s at %s +/-5 minutes in another app. Please either change the alarm time here or the other app.", 
+                     daystr, timestr);
+            
+            show_errormsg(msg);
+          } else {
+            show_errormsg("Unknown error while setting alarm. A factory reset may be required if this happens again");
+          }
+        }
+      }
       
       // If smart alarm monitoring, update display with actual alarm time
       if (s_monitoring) show_monitoring(alarm_time);
