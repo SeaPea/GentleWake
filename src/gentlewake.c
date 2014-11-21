@@ -4,6 +4,7 @@
 #include "stopinstructions.h"
 #include "common.h"
 #include "errormsg.h"
+#include "mainbuttoninfo.h"
 
 // Main program unit
   
@@ -26,6 +27,7 @@ static int s_snooze_count = 0;
 static bool s_alarm_active = false;
 static bool s_monitoring = false;
 static int s_last_reset_day = -1;
+static bool s_skip_next = false;
 static int s_vibe_count = 0;
 static uint64_t s_last_easylight = 0;
 static bool s_accel_service_sub = false;
@@ -61,7 +63,8 @@ enum Settings_en {
   EASYLIGHT_KEY = 9,
   SNOOZINGON_KEY = 10,
   MONITORINGON_KEY = 11,
-  MOVESENSITIVITY_KEY = 12
+  MOVESENSITIVITY_KEY = 12,
+  SKIPNEXT_KEY = 13
 };
 
 // Calculate which daily alarm (if any) will be next
@@ -71,6 +74,7 @@ static int get_next_alarm() {
   struct tm *t;
   time_t temp;
   int next;
+  bool skipped = false;
   
   // Get current time
   temp = time(NULL);
@@ -79,8 +83,12 @@ static int get_next_alarm() {
   for (int d = t->tm_wday + (t->tm_wday == s_last_reset_day ? 1 : 0); d <= (t->tm_wday + 7); d++) {
     next = d % 7;
     if (s_alarms[next].enabled && (d > t->tm_wday || s_alarms[next].hour > t->tm_hour || 
-                                   (s_alarms[next].hour == t->tm_hour && s_alarms[next].minute > t->tm_min)))
-      return next;
+                                   (s_alarms[next].hour == t->tm_hour && s_alarms[next].minute > t->tm_min))) {
+      if (s_skip_next && !skipped)
+        skipped = true;
+      else
+        return next;
+    }
   }
   
   return -1;
@@ -274,6 +282,12 @@ static void set_lastresetday(int last_reset_day) {
   persist_write_int(LASTRESETDAY_KEY, s_last_reset_day);
 }
 
+// Updates flag for skipping next alarm and saves it in case of an exit
+static void set_skipnext(bool skip_next) {
+  s_skip_next = skip_next;
+  persist_write_bool(SKIPNEXT_KEY, s_skip_next);
+}
+
 // Turns off an active alarm or cancels a snooze and sets wakeup for next alarm
 static void reset_alarm() {
   struct tm *t;
@@ -372,6 +386,8 @@ static void settings_update() {
   if (s_loaded) {
     // Reset the last reset day in case alarms were changed
     set_lastresetday(-1);
+    // Reset skip next too
+    set_skipnext(false);
     
     // Save settings after a delay to allow UI to update
     app_timer_register(500, save_settings_delayed, NULL);
@@ -421,10 +437,44 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   }
 }
 
+static void up_longclick_handler(ClickRecognizerRef recognizer, void *context) {
+  if (!s_alarm_active && !s_snoozing && !s_monitoring) {
+    // Disable long Up button press when alarm active, snoozing, or monitoring
+    
+    // Toggle skipping next alarm
+    bool skip_next = !s_skip_next;
+    
+    if (skip_next) {
+      // If skipping, make sure there is more than 1 alarm (needs at least 2 to skip to the next wakeup)
+      int alarm_count = 0;
+      for (int i = 0; i < 7; i++) {
+        if (s_alarms[i].enabled) alarm_count++;
+      }
+      if (alarm_count == 0 || !s_alarms_on) 
+        return; // Do not enable skip with no alarms or all alarms off
+      else if (alarm_count == 1) {
+        show_errormsg("Cannot skip next alarm when there is only an alarm set for one day.");
+        return;
+      }
+    }
+    set_skipnext(skip_next);
+    
+    // Update alarm display
+    int next_alarm = get_next_alarm();
+    gen_info_str(next_alarm);
+    update_info(s_info);
+    // Update wakeup
+    set_wakeup(next_alarm);
+  }
+}
+
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   // Single click snoozes when alarm active, Select button single click is disabled otherwise
   if (!s_snoozing && !s_monitoring) {
-    if (s_alarm_active) snooze_alarm();
+    if (s_alarm_active) 
+      snooze_alarm();
+    else
+      show_mainbuttoninfo();
   } else {
     show_stopinstructions();
   }
@@ -461,6 +511,7 @@ static void click_config_provider(void *context) {
   window_multi_click_subscribe(BUTTON_ID_UP, 2, 2, 300, true, multiclick_handler);
   window_multi_click_subscribe(BUTTON_ID_SELECT, 2, 2, 300, true, multiclick_handler);
   window_multi_click_subscribe(BUTTON_ID_DOWN, 2, 2, 300, true, multiclick_handler);
+  window_long_click_subscribe(BUTTON_ID_UP, 2000, up_longclick_handler, NULL);
 }
 
 // Start the alarm, including vibrating the Pebble
@@ -576,6 +627,8 @@ static void start_accel() {
 static void wakeup_handler(WakeupId id, int32_t reason) {
   // Clear last reset day since either normal alarm or smart alarm is now active 
   set_lastresetday(-1);
+  // Also reset skip
+  set_skipnext(false);
   
   if (reason != WAKEUP_REASON_SNOOZE) {
     set_snoozecount(0);
@@ -649,6 +702,8 @@ static void init(void) {
     s_snoozing = persist_read_bool(SNOOZINGON_KEY);
   if (persist_exists(MONITORINGON_KEY))
     s_monitoring = persist_read_bool(MONITORINGON_KEY);
+  if (persist_exists(SKIPNEXT_KEY))
+    s_skip_next = persist_read_bool(SKIPNEXT_KEY);
   
   // Show the main screen and update the UI
   show_mainwin();
