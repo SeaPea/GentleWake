@@ -155,8 +155,13 @@ static void set_wakeup_delayed(void *data) {
           // If ID is still negative, show error message
           if (s_wakeup_id == E_RANGE)
             show_errormsg("Unable to set the snooze alarm due to another app alarm.");
-          else
-            show_errormsg("Unknown error while setting snooze alarm. A factory reset may be required if this happens again");
+          else {
+            char msg[150];
+            snprintf(msg, sizeof(msg),
+                     "Unknown error while setting snooze alarm (%ld). A factory reset may be required if this happens again",
+                     s_wakeup_id);
+            show_errormsg(msg);
+          }
         }
       }
     } else {
@@ -222,9 +227,10 @@ static void set_wakeup_delayed(void *data) {
         }
         
         if (s_wakeup_id < 0) {
+          char msg[150];
+          
           // If ID is still negative, show error message
           if (s_wakeup_id == E_RANGE) {
-            char msg[150];
             char daystr[10];
             char timestr[8];
             
@@ -236,7 +242,10 @@ static void set_wakeup_delayed(void *data) {
             
             show_errormsg(msg);
           } else {
-            show_errormsg("Unknown error while setting alarm. A factory reset may be required if this happens again");
+            snprintf(msg, sizeof(msg),
+                     "Unknown error while setting alarm (%ld). A factory reset may be required if this happens again",
+                     s_wakeup_id);
+            show_errormsg(msg);
           }
         }
       }
@@ -459,6 +468,7 @@ static void up_longclick_handler(ClickRecognizerRef recognizer, void *context) {
     }
     set_skipnext(skip_next);
     
+    vibes_short_pulse();
     // Update alarm display
     int next_alarm = get_next_alarm();
     gen_info_str(next_alarm);
