@@ -62,7 +62,7 @@ void gen_time_str(int hour, int min, char *timestr, int slen) {
       snprintf(timestr, slen, "%d:%.2d", hour, min);
     else
       snprintf(timestr, slen, "%d:%.2d%s", hour > 12 ? hour - 12 : hour == 0 ? 12 : hour, min,
-               hour > 12 ? "PM" : "AM");
+               hour >= 12 ? "PM" : "AM");
 }
 
 void gen_alarm_str(alarm *alarmtime, char *alarmstr, int slen) {

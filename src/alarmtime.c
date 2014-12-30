@@ -113,7 +113,7 @@ static void update_alarmtime() {
     snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour);
   } else {
     snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour > 12 ? s_hour - 12 : s_hour == 0 ? 12 : s_hour);
-    text_layer_set_text(ampm_layer, s_hour > 12 ? "PM" : "AM");
+    text_layer_set_text(ampm_layer, s_hour >= 12 ? "PM" : "AM");
   }
   text_layer_set_text(hour_layer, s_hourstr);
   snprintf(s_minutestr, sizeof(s_minutestr), "%.2d", s_minute);
