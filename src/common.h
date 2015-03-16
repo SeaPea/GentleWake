@@ -16,12 +16,14 @@ typedef enum MoveSensitivity {
 } MoveSensitivty;
 
 struct Settings_st {
-  int snooze_delay;
+  uint8_t snooze_delay;
   bool dynamic_snooze;
   bool easy_light;
   bool smart_alarm;
-  int monitor_period;
+  uint8_t monitor_period;
   MoveSensitivty sensitivity;
+  WeekDay dst_check_day;
+  uint8_t dst_check_hour;
 };
 
 typedef enum AlarmDay {

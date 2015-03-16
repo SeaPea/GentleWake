@@ -13,6 +13,7 @@
 #define WAKEUP_REASON_ALARM 0
 #define WAKEUP_REASON_SNOOZE 1
 #define WAKEUP_REASON_MONITOR 2
+#define WAKEUP_REASON_DSTCHECK 4
 #define MOVEMENT_THRESHOLD_LOW 10000
 #define MOVEMENT_THRESHOLD_MID 15000
 #define MOVEMENT_THRESHOLD_HIGH 20000
@@ -38,6 +39,7 @@ static int s_last_y = 0;
 static int s_last_z = 0;
 static int s_movement = 0;
 static bool s_loaded = false;
+static bool s_dst_check_started = false;
 
 // Vibrate alarm paterns - 2nd dimension: [next vibe delay (sec), vibe segment index, vibe segment length]
 static int vibe_patterns[24][3] = {{3, 0, 1}, {3, 0, 1}, {4, 1, 3}, {4, 1, 3}, {4, 2, 5}, {4, 2, 5}, 
@@ -64,7 +66,9 @@ enum Settings_en {
   SNOOZINGON_KEY = 10,
   MONITORINGON_KEY = 11,
   MOVESENSITIVITY_KEY = 12,
-  SKIPNEXT_KEY = 13
+  SKIPNEXT_KEY = 13,
+  DSTCHECKDAY_KEY = 14,
+  DSTCHECKHOUR_KEY = 15
 };
 
 // Calculate which daily alarm (if any) will be next
@@ -112,6 +116,8 @@ static void gen_info_str(int next_alarm) {
 // Timer handler that sets the wakeup time after a short delay
 // (allows UI to refresh beforehand since this sometimes takes a second or 2 for some reason)
 static void set_wakeup_delayed(void *data) {
+  int try_count = 0;
+  int diff = 0;
   int next_alarm = s_next_alarm;
   
   // Clear any previous wakeup time
@@ -208,8 +214,6 @@ static void set_wakeup_delayed(void *data) {
         if (s_wakeup_id == E_RANGE) {
           // E_RANGE means some other app has the same wakeup time +/- 1 minute, so try to set
           // the wakeup for an earlier/later time up to 5 minutes before/after.
-          int try_count = 0;
-          int diff = 0;
           
           if (alarm_time < curr_time + 360)
             // If alarm time less than 6 minutes in the future, try for later time
@@ -253,10 +257,34 @@ static void set_wakeup_delayed(void *data) {
       // If smart alarm monitoring, update display with actual alarm time
       if (s_monitoring) show_monitoring(alarm_time);
     }
+    
+    if (s_settings.dst_check_day != 0) {
+      // If DST check is on, set a wakeup for redoing alarms in case of a daylight savings time change
+      WakeupId check_wakeup_id = 0;
+      time_t check_time = clock_to_timestamp(s_settings.dst_check_day, s_settings.dst_check_hour, 0);
+      check_time -= check_time % 60;
+      check_wakeup_id = wakeup_schedule(check_time, WAKEUP_REASON_DSTCHECK, false);
+      
+      if (check_wakeup_id == E_RANGE) {
+        // If another app has a wakeup at the same time, try up to 10 minutes after the check time in 
+        // 1 minute increments
+        try_count = 0;
+        diff = 60;
+        
+        while (check_wakeup_id == E_RANGE && try_count++ < 10) {
+          check_time += diff;
+          check_wakeup_id = wakeup_schedule(check_time, WAKEUP_REASON_DSTCHECK, false);
+        }
+      }
+    }
   }
   
   // Always make sure wakeup ID is saved immediately
   persist_write_int(WAKEUPID_KEY, s_wakeup_id);
+  
+  // If app was started for a DST check, close the app now that the wakeups have been redone.
+  if (s_dst_check_started)
+    window_stack_pop_all(false);
 }
 
 // Sets an app wakeup for the specified alarm day
@@ -387,6 +415,8 @@ static void save_settings_delayed(void *data) {
   persist_write_bool(SMARTALARM_KEY, s_settings.smart_alarm);
   persist_write_int(MONITORPERIOD_KEY, s_settings.monitor_period);
   persist_write_int(MOVESENSITIVITY_KEY, s_settings.sensitivity);
+  persist_write_int(DSTCHECKDAY_KEY, s_settings.dst_check_day);
+  persist_write_int(DSTCHECKHOUR_KEY, s_settings.dst_check_hour);
 }
 
 // Callback function to indicate when the settings have been closed
@@ -635,32 +665,40 @@ static void start_accel() {
 
 // Handler for when the wakeup time occurs
 static void wakeup_handler(WakeupId id, int32_t reason) {
-  // Clear last reset day since either normal alarm or smart alarm is now active 
-  set_lastresetday(-1);
-  // Also reset skip
-  set_skipnext(false);
-  
-  if (reason != WAKEUP_REASON_SNOOZE) {
-    set_snoozecount(0);
-  }
-  
-  if (reason == WAKEUP_REASON_MONITOR) {
-    // Start monitoring activity for stirring
-    set_monitoring(true);
-    s_last_x = 0;
-    s_last_y = 0;
-    s_last_z = 0;
-    s_movement = 0;
-    // Set wakeup for the actual alarm time in case we're dead to the world or something goes wrong during monitoring
-    set_wakeup(get_next_alarm());
+  if (reason == WAKEUP_REASON_DSTCHECK) {
+    // If wakeup was for Daylight Savings Time check and we're not in the middle
+    // of an active alarm or monitoring (which would have updated the wakeup times anyway), then
+    // redo the alarm wakeups
+    if (!s_alarm_active && !s_snoozing && !s_monitoring)
+      set_wakeup(s_alarms_on ? get_next_alarm() : -1);
   } else {
-    // Activate the alarm
-    start_alarm();
-  }
-  
-  // Monitor movement for either Smart Alarm or Easy Light
-  if (s_monitoring || s_settings.easy_light) {
-    start_accel();
+    // Clear last reset day since either normal alarm or smart alarm is now active 
+    set_lastresetday(-1);
+    // Also reset skip
+    set_skipnext(false);
+    
+    if (reason != WAKEUP_REASON_SNOOZE) {
+      set_snoozecount(0);
+    }
+    
+    if (reason == WAKEUP_REASON_MONITOR) {
+      // Start monitoring activity for stirring
+      set_monitoring(true);
+      s_last_x = 0;
+      s_last_y = 0;
+      s_last_z = 0;
+      s_movement = 0;
+      // Set wakeup for the actual alarm time in case we're dead to the world or something goes wrong during monitoring
+      set_wakeup(get_next_alarm());
+    } else {
+      // Activate the alarm
+      start_alarm();
+    }
+    
+    // Monitor movement for either Smart Alarm or Easy Light
+    if (s_monitoring || s_settings.easy_light) {
+      start_accel();
+    }
   }
 }
 
@@ -714,6 +752,14 @@ static void init(void) {
     s_monitoring = persist_read_bool(MONITORINGON_KEY);
   if (persist_exists(SKIPNEXT_KEY))
     s_skip_next = persist_read_bool(SKIPNEXT_KEY);
+  if (persist_exists(DSTCHECKDAY_KEY))
+    s_settings.dst_check_day = persist_read_int(DSTCHECKDAY_KEY);
+  else
+    s_settings.dst_check_day = SUNDAY;
+  if (persist_exists(DSTCHECKHOUR_KEY))
+    s_settings.dst_check_hour = persist_read_int(DSTCHECKHOUR_KEY);
+  else
+    s_settings.dst_check_hour = 4;
   
   // Show the main screen and update the UI
   show_mainwin();
@@ -732,7 +778,12 @@ static void init(void) {
       WakeupId id = 0;
       int32_t reason = 0;
       wakeup_get_launch_event(&id, &reason);
+      
+      // It app was started for a DST check, exit once the wakeups have been redone (happens on a timer)
+      if (reason == WAKEUP_REASON_DSTCHECK) s_dst_check_started = true;
+      
       wakeup_handler(id, reason);
+       
     } else {
       // Make sure a wakeup event is set if needed
       time_t wakeuptime = 0;

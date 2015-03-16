@@ -6,13 +6,15 @@
 
 // Top-Level Settings Screen
   
-#define NUM_MENU_SECTIONS 3
+#define NUM_MENU_SECTIONS 4
 #define NUM_MENU_ALARM_ITEMS 1
 #define NUM_MENU_MISC_ITEMS 3
 #define NUM_MENU_SMART_ITEMS 3
+#define NUM_MENU_DST_ITEMS 2
 #define MENU_ALARM_SECTION 0
 #define MENU_MISC_SECTION 1
 #define MENU_SMART_SECTION 2
+#define MENU_DST_SECTION 3
 #define MENU_ALARMS_ITEM 0
 #define MENU_SNOOZEDELAY_ITEM 0
 #define MENU_DYNAMICSNOOZE_ITEM 1
@@ -20,6 +22,8 @@
 #define MENU_SMARTALARM_ITEM 0
 #define MENU_SMARTPERIOD_ITEM 1
 #define MENU_MOVESENSITIVITY_ITEM 2
+#define MENU_DSTDAYCHECK_ITEM 0
+#define MENU_DSTDAYHOUR_ITEM 1
   
 static alarm *s_alarms;
 static struct Settings_st *s_settings;
@@ -60,6 +64,8 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
       return NUM_MENU_MISC_ITEMS;
     case MENU_SMART_SECTION:
       return NUM_MENU_SMART_ITEMS;
+    case MENU_DST_SECTION:
+      return NUM_MENU_DST_ITEMS;
     default:
       return 0;
   }
@@ -87,6 +93,9 @@ static void menu_draw_header_callback(GContext* ctx, const Layer *cell_layer, ui
     case MENU_SMART_SECTION:
       menu_cell_basic_header_draw(ctx, cell_layer, "Smart Alarm");
       break;
+    case MENU_DST_SECTION:
+      menu_cell_basic_header_draw(ctx, cell_layer, "DST Check");
+      break;
   }
 }
 
@@ -102,6 +111,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   char alarm_str[8];
   char snooze_str[15];
   char monitor_str[15];
+  char dst_check_hour_str[6];
   
   switch (cell_index->section) {
     case MENU_ALARM_SECTION:
@@ -207,6 +217,30 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           }
           break;
       }
+      break;
+    
+    case MENU_DST_SECTION:
+      switch (cell_index->row) {
+        case MENU_DSTDAYCHECK_ITEM:
+          switch (s_settings->dst_check_day) {
+            case 0:
+              menu_cell_basic_draw(ctx, cell_layer, "Check Day", "OFF", NULL);
+              break;
+            case FRIDAY:
+              menu_cell_basic_draw(ctx, cell_layer, "Check Day", "Friday", NULL);
+              break;
+            default:
+              menu_cell_basic_draw(ctx, cell_layer, "Check Day", "Sunday", NULL);
+              break;
+          }
+          break;
+        
+        case MENU_DSTDAYHOUR_ITEM:
+          snprintf(dst_check_hour_str, sizeof(dst_check_hour_str), "%d AM", s_settings->dst_check_hour);
+          menu_cell_basic_draw(ctx, cell_layer, "Check Hour", dst_check_hour_str, NULL);
+          break;
+      }
+      break;
   }
 }
 
@@ -258,6 +292,30 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
         case MENU_MOVESENSITIVITY_ITEM:
           s_settings->sensitivity = (s_settings->sensitivity == MS_HIGH ? MS_LOW : s_settings->sensitivity + 1);
           layer_mark_dirty(menu_layer_get_layer(settings_layer));
+          break;
+      }
+      break;
+    
+    case MENU_DST_SECTION:
+      switch (cell_index->row) {
+        case MENU_DSTDAYCHECK_ITEM:
+          // Cycle DST check day between Sunday, Friday, and OFF
+          switch (s_settings->dst_check_day) {
+            case 0:
+              s_settings->dst_check_day = SUNDAY;
+              break;
+            case FRIDAY:
+              s_settings->dst_check_day = 0;
+              break;
+            default:
+              s_settings->dst_check_day = FRIDAY;
+              break;
+          }
+          break;
+        case MENU_DSTDAYHOUR_ITEM:
+          // Cycle DST check hour between 3AM and 9AM
+          s_settings->dst_check_hour++;
+          if (s_settings->dst_check_hour > 9) s_settings->dst_check_hour = 3;
           break;
       }
       break;
