@@ -224,20 +224,23 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
         case MENU_DSTDAYCHECK_ITEM:
           switch (s_settings->dst_check_day) {
             case 0:
-              menu_cell_basic_draw(ctx, cell_layer, "Check Day", "OFF", NULL);
+              menu_cell_basic_draw(ctx, cell_layer, "DST Check Day", "OFF", NULL);
+              break;
+            case TUESDAY:
+              menu_cell_basic_draw(ctx, cell_layer, "DST Check Day", "Tuesday", NULL);
               break;
             case FRIDAY:
-              menu_cell_basic_draw(ctx, cell_layer, "Check Day", "Friday", NULL);
+              menu_cell_basic_draw(ctx, cell_layer, "DST Check Day", "Friday", NULL);
               break;
             default:
-              menu_cell_basic_draw(ctx, cell_layer, "Check Day", "Sunday", NULL);
+              menu_cell_basic_draw(ctx, cell_layer, "DST Check Day", "Sunday", NULL);
               break;
           }
           break;
         
         case MENU_DSTDAYHOUR_ITEM:
           snprintf(dst_check_hour_str, sizeof(dst_check_hour_str), "%d AM", s_settings->dst_check_hour);
-          menu_cell_basic_draw(ctx, cell_layer, "Check Hour", dst_check_hour_str, NULL);
+          menu_cell_basic_draw(ctx, cell_layer, "DST Check Hour", dst_check_hour_str, NULL);
           break;
       }
       break;
@@ -299,23 +302,28 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case MENU_DST_SECTION:
       switch (cell_index->row) {
         case MENU_DSTDAYCHECK_ITEM:
-          // Cycle DST check day between Sunday, Friday, and OFF
+          // Cycle DST check day between Sunday, Tuesday, Friday, and OFF
           switch (s_settings->dst_check_day) {
-            case 0:
-              s_settings->dst_check_day = SUNDAY;
+            case SUNDAY:
+              s_settings->dst_check_day = TUESDAY;
+              break;
+            case TUESDAY:
+              s_settings->dst_check_day = FRIDAY;
               break;
             case FRIDAY:
               s_settings->dst_check_day = 0;
               break;
             default:
-              s_settings->dst_check_day = FRIDAY;
+              s_settings->dst_check_day = SUNDAY;
               break;
           }
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case MENU_DSTDAYHOUR_ITEM:
           // Cycle DST check hour between 3AM and 9AM
           s_settings->dst_check_hour++;
           if (s_settings->dst_check_hour > 9) s_settings->dst_check_hour = 3;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
       }
       break;

@@ -18,6 +18,9 @@
 #define MOVEMENT_THRESHOLD_MID 15000
 #define MOVEMENT_THRESHOLD_HIGH 20000
 #define REST_MOVEMENT 300
+#define NEXT_ALARM_NONE -1
+#define NEXT_ALARM_SNOOZE -2
+#define NEXT_ALARM_SKIPWEEK -3
   
 static bool s_alarms_on = true;
 static alarm s_alarms[7];
@@ -27,8 +30,8 @@ static bool s_snoozing = false;
 static int s_snooze_count = 0;
 static bool s_alarm_active = false;
 static bool s_monitoring = false;
-static int s_last_reset_day = -1;
-static bool s_skip_next = false;
+static time_t s_last_reset_day = 0;
+static time_t s_skip_until = 0;
 static int s_vibe_count = 0;
 static uint64_t s_last_easylight = 0;
 static bool s_accel_service_sub = false;
@@ -68,8 +71,21 @@ enum Settings_en {
   MOVESENSITIVITY_KEY = 12,
   SKIPNEXT_KEY = 13,
   DSTCHECKDAY_KEY = 14,
-  DSTCHECKHOUR_KEY = 15
+  DSTCHECKHOUR_KEY = 15,
+  LASTRESETDATE_KEY = 16,
+  SKIPUNTIL_KEY = 17
 };
+
+// Strip time component from a timestamp (leaving the date part)
+static time_t strip_time(time_t timestamp) {
+  return timestamp - (timestamp % (60*60*24));
+}
+
+// Calculates the number of days (not 24 hour periods) between 2 dates where date1 is older
+// than date2 (if date2 is older a negative number will be returned)
+static int64_t day_diff(time_t date1, time_t date2) {
+  return ((strip_time(date2) - strip_time(date1)) / (60*60*24));
+}
 
 // Calculate which daily alarm (if any) will be next
 // (Takes into account if the alarm for today was reset like when Smart Alarm is active and turned off
@@ -77,25 +93,41 @@ enum Settings_en {
 static int get_next_alarm() {
   struct tm *t;
   time_t temp;
+  time_t next_date;
   int next;
-  bool skipped = false;
   
   // Get current time
   temp = time(NULL);
   t = localtime(&temp);
   
-  for (int d = t->tm_wday + (t->tm_wday == s_last_reset_day ? 1 : 0); d <= (t->tm_wday + 7); d++) {
+  if (day_diff(temp, s_skip_until) >= 7) return NEXT_ALARM_SKIPWEEK;
+  
+  for (int d = t->tm_wday + (strip_time(temp) == s_last_reset_day ? 1 : 0); d <= (t->tm_wday + 7); d++) {
     next = d % 7;
     if (s_alarms[next].enabled && (d > t->tm_wday || s_alarms[next].hour > t->tm_hour || 
                                    (s_alarms[next].hour == t->tm_hour && s_alarms[next].minute > t->tm_min))) {
-      if (s_skip_next && !skipped)
-        skipped = true;
-      else
+      next_date = clock_to_timestamp(ad2wd(next), 0, 0);
+      
+      if (next_date >= s_skip_until)
         return next;
     }
   }
   
-  return -1;
+  return NEXT_ALARM_NONE;
+}
+
+// Calculates the skip until date for just skipping the next alarm
+static time_t calc_skipnext() {
+  int next_alarm = get_next_alarm();
+  
+  switch (next_alarm) {
+    case NEXT_ALARM_NONE:
+      return 0;
+    case NEXT_ALARM_SKIPWEEK:
+      return s_skip_until;
+    default:
+      return strip_time(clock_to_timestamp(ad2wd(next_alarm), 0, 0)) + (60*60*24);
+  }
 }
 
 // Generates the text to show what alarm is next
@@ -104,13 +136,24 @@ static void gen_info_str(int next_alarm) {
   char day_str[4];
   char time_str[8];
   
-  if (next_alarm == -1) {
+  if (next_alarm == NEXT_ALARM_NONE) {
     strncpy(s_info, "NO ALARMS SET", sizeof(s_info));
+  } else if (next_alarm == NEXT_ALARM_SKIPWEEK) {
+    struct tm *skip_until = localtime(&s_skip_until);
+    strftime(s_info, sizeof(s_info), "Skip Until:%n%a, %b %d", skip_until);
   } else {    
     daynameshort(next_alarm, day_str, sizeof(day_str));
     gen_alarm_str(&s_alarms[next_alarm], time_str, sizeof(time_str));
     snprintf(s_info, sizeof(s_info), "Next Alarm:\n%s %s", day_str, time_str);
   }
+}
+
+// Updates the displayed alarm time (and returns the next alarm day value)
+static int update_alarm_display() {
+  int next_alarm = get_next_alarm();
+  gen_info_str(next_alarm);
+  update_info(s_info);
+  return next_alarm;
 }
 
 // Timer handler that sets the wakeup time after a short delay
@@ -126,7 +169,7 @@ static void set_wakeup_delayed(void *data) {
     s_wakeup_id = 0;
   }
   
-  if (next_alarm != -1) {
+  if (next_alarm != NEXT_ALARM_NONE) {
     // If there is a next alarm or snooze alarm (next_alarm == -2 when setting snooze wakeup)
     
     if (s_snoozing || s_alarm_active) {
@@ -191,6 +234,8 @@ static void set_wakeup_delayed(void *data) {
       
       // Get the time for the next alarm
       time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[next_alarm].hour, s_alarms[next_alarm].minute);
+      // Strip seconds
+      alarm_time -= alarm_time % 60;
       
       // If the smart alarm is on but not active, set the wakeup to the alarm time minus the monitor period
       if (s_settings.smart_alarm && !s_monitoring) 
@@ -314,41 +359,33 @@ static void set_monitoring(bool monitoring) {
 }
 
 // Updates last reset day and saves it in case of an exit
-static void set_lastresetday(int last_reset_day) {
-  s_last_reset_day = last_reset_day;
-  persist_write_int(LASTRESETDAY_KEY, s_last_reset_day);
+static void set_lastresetday(time_t last_reset_day) {
+  s_last_reset_day = strip_time(last_reset_day);
+  persist_write_data(LASTRESETDATE_KEY, &s_last_reset_day, sizeof(s_last_reset_day));
 }
 
 // Updates flag for skipping next alarm and saves it in case of an exit
-static void set_skipnext(bool skip_next) {
-  s_skip_next = skip_next;
-  persist_write_bool(SKIPNEXT_KEY, s_skip_next);
+static void set_skipuntil(time_t skip_until) {
+  s_skip_until = skip_until;
+  persist_write_data(SKIPUNTIL_KEY, &s_skip_until, sizeof(s_skip_until));
 }
 
 // Turns off an active alarm or cancels a snooze and sets wakeup for next alarm
 static void reset_alarm() {
-  struct tm *t;
-  time_t temp;
   int next;
-  
-  // Get current time
-  temp = time(NULL);
-  t = localtime(&temp);
   
   s_alarm_active = false;
   set_snoozing(false);
   set_monitoring(false);
   set_snoozecount(0);
-  set_lastresetday(t->tm_wday);
+  set_lastresetday(time(NULL));
   
   // Update UI with next alarm details
   show_alarm_ui(false);
-  next = get_next_alarm();
-  gen_info_str(next);
-  update_info(s_info);
+  next = update_alarm_display();
   
   // Set the next alarm wakeup
-  set_wakeup(get_next_alarm());
+  set_wakeup(next);
 }
 
 // Snoozes active alarm
@@ -357,7 +394,7 @@ static void snooze_alarm() {
   set_snoozecount(s_snooze_count + 1);
   
   // Set snooze wakeup
-  set_wakeup(-2);
+  set_wakeup(NEXT_ALARM_SNOOZE);
 }
 
 static void vibe_alarm();
@@ -424,18 +461,16 @@ static void save_settings_delayed(void *data) {
 static void settings_update() {
   if (s_loaded) {
     // Reset the last reset day in case alarms were changed
-    set_lastresetday(-1);
+    set_lastresetday(0);
     // Reset skip next too
-    set_skipnext(false);
+    set_skipuntil(0);
     
     // Save settings after a delay to allow UI to update
     app_timer_register(500, save_settings_delayed, NULL);
   }
   
   // Update next alarm info
-  int next_alarm = get_next_alarm();
-  gen_info_str(next_alarm);
-  update_info(s_info);
+  int next_alarm = update_alarm_display();
   
   // Set next wakeup in case alarms were changed
   if (s_loaded) set_wakeup(next_alarm);
@@ -469,7 +504,11 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
       s_alarms_on = !s_alarms_on;
       persist_write_bool(ALARMSON_KEY, s_alarms_on);
       update_onoff(s_alarms_on);
-      set_wakeup(s_alarms_on ? get_next_alarm() : -1);
+      // Reset skip
+      set_skipuntil(0);
+      int next_alarm = update_alarm_display();
+      // Redo wakeup
+      set_wakeup(s_alarms_on ? next_alarm : -1);
     }
   } else {
     show_stopinstructions();
@@ -480,29 +519,19 @@ static void up_longclick_handler(ClickRecognizerRef recognizer, void *context) {
   if (!s_alarm_active && !s_snoozing && !s_monitoring) {
     // Disable long Up button press when alarm active, snoozing, or monitoring
     
-    // Toggle skipping next alarm
-    bool skip_next = !s_skip_next;
-    
-    if (skip_next) {
-      // If skipping, make sure there is more than 1 alarm (needs at least 2 to skip to the next wakeup)
-      int alarm_count = 0;
-      for (int i = 0; i < 7; i++) {
-        if (s_alarms[i].enabled) alarm_count++;
-      }
-      if (alarm_count == 0 || !s_alarms_on) 
-        return; // Do not enable skip with no alarms or all alarms off
-      else if (alarm_count == 1) {
-        show_errormsg("Cannot skip next alarm when there is only an alarm set for one day.");
-        return;
-      }
-    }
-    set_skipnext(skip_next);
+    if (day_diff(time(NULL), s_skip_until) < 7) {
+      // Repeatedly calculating the next alarm skip date, skips each subsequent alarm
+      set_skipuntil(calc_skipnext());
+      // Limit skips to 1 week into the future for now as more than 1 week will require
+      // some tweaking to the wakeup code
+      if (day_diff(time(NULL), s_skip_until) >= 7)
+        set_skipuntil(0);
+    } else
+      set_skipuntil(0);
     
     vibes_short_pulse();
     // Update alarm display
-    int next_alarm = get_next_alarm();
-    gen_info_str(next_alarm);
-    update_info(s_info);
+    int next_alarm = update_alarm_display();
     // Update wakeup
     set_wakeup(next_alarm);
   }
@@ -561,7 +590,7 @@ static void start_alarm() {
   set_monitoring(false);
   show_alarm_ui(true);
   // Set snooze wakeup in case app is closed with the alarm vibrating
-  set_wakeup(-2);
+  set_wakeup(NEXT_ALARM_SNOOZE);
 
   // Start alarm vibrate
   s_vibe_count = 0;
@@ -667,15 +696,15 @@ static void start_accel() {
 static void wakeup_handler(WakeupId id, int32_t reason) {
   if (reason == WAKEUP_REASON_DSTCHECK) {
     // If wakeup was for Daylight Savings Time check and we're not in the middle
-    // of an active alarm or monitoring (which would have updated the wakeup times anyway), then
+    // of an active alarm or monitoring (which will update the wakeup times anyway), then
     // redo the alarm wakeups
     if (!s_alarm_active && !s_snoozing && !s_monitoring)
       set_wakeup(s_alarms_on ? get_next_alarm() : -1);
   } else {
     // Clear last reset day since either normal alarm or smart alarm is now active 
-    set_lastresetday(-1);
+    set_lastresetday(0);
     // Also reset skip
-    set_skipnext(false);
+    set_skipuntil(0);
     
     if (reason != WAKEUP_REASON_SNOOZE) {
       set_snoozecount(0);
@@ -742,23 +771,30 @@ static void init(void) {
     s_alarms_on = persist_read_bool(ALARMSON_KEY);
   if (persist_exists(WAKEUPID_KEY))
     s_wakeup_id = persist_read_int(WAKEUPID_KEY);
-  if (persist_exists(LASTRESETDAY_KEY))
-    s_last_reset_day = persist_read_int(LASTRESETDAY_KEY);
+  if (persist_exists(LASTRESETDATE_KEY))
+    persist_read_data(LASTRESETDATE_KEY, &s_last_reset_day, sizeof(s_last_reset_day));
   if (persist_exists(SNOOZECOUNT_KEY))
     s_snooze_count = persist_read_int(SNOOZECOUNT_KEY);
   if (persist_exists(SNOOZINGON_KEY))
     s_snoozing = persist_read_bool(SNOOZINGON_KEY);
   if (persist_exists(MONITORINGON_KEY))
     s_monitoring = persist_read_bool(MONITORINGON_KEY);
-  if (persist_exists(SKIPNEXT_KEY))
-    s_skip_next = persist_read_bool(SKIPNEXT_KEY);
+  if (persist_exists(SKIPNEXT_KEY)) {
+    bool skip_next = persist_read_bool(SKIPNEXT_KEY);
+    persist_delete(SKIPNEXT_KEY);
+    if (skip_next) set_skipuntil(calc_skipnext());
+  }
+  if (persist_exists(SKIPUNTIL_KEY))
+    persist_read_data(SKIPUNTIL_KEY, &s_skip_until, sizeof(s_skip_until));
   if (persist_exists(DSTCHECKDAY_KEY))
     s_settings.dst_check_day = persist_read_int(DSTCHECKDAY_KEY);
   else
     s_settings.dst_check_day = SUNDAY;
-  if (persist_exists(DSTCHECKHOUR_KEY))
+  if (persist_exists(DSTCHECKHOUR_KEY)) {
     s_settings.dst_check_hour = persist_read_int(DSTCHECKHOUR_KEY);
-  else
+    if (s_settings.dst_check_hour < 3 || s_settings.dst_check_hour > 9)
+      s_settings.dst_check_hour = 4;
+  } else
     s_settings.dst_check_hour = 4;
   
   // Show the main screen and update the UI
