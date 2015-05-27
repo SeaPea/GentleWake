@@ -1,3 +1,4 @@
+#include "common.h"
 #include "stopinstructions.h"
 #include <pebble.h>
 
@@ -10,7 +11,7 @@ static TextLayer *s_textlayer_1;
 static void initialise_ui(void) {
   s_window = window_create();
   window_set_background_color(s_window, GColorBlack);
-  window_set_fullscreen(s_window, false);
+  IF_A(window_set_fullscreen(s_window, true));
   
   s_res_gothic_24_bold = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
   // s_textlayer_2

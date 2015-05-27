@@ -61,11 +61,14 @@
             }
         ]
     },
-    "sdkVersion": "2",
+    "sdkVersion": "3",
     "shortName": "Gentle Wake",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
     "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
-    "versionCode": 1,
-    "versionLabel": "1.8",
+    "versionLabel": "2.0",
     "watchapp": {
         "watchface": false
     }

@@ -1,3 +1,4 @@
+#include "common.h"
 #include "periodset.h"
 #include <pebble.h>
 
@@ -8,8 +9,7 @@ static int s_min_minutes = 0;
 static int s_max_minutes = 60;
 static char s_minute_str[3];
 static PeriodSetCallBack s_set_event;
-  
-// BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
+
 static Window *s_window;
 static GFont s_res_bitham_30_black;
 static GFont s_res_gothic_28_bold;
@@ -24,7 +24,8 @@ static ActionBarLayer *action_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
-  window_set_fullscreen(s_window, 0);
+  window_set_background_color(s_window, GColorBlack);
+  IF_A(window_set_fullscreen(s_window, false));
   
   s_res_bitham_30_black = fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
   s_res_gothic_28_bold = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
@@ -34,6 +35,8 @@ static void initialise_ui(void) {
   s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_DOWNACTION);
   // minutes_layer
   minutes_layer = text_layer_create(GRect(40, 63, 42, 36));
+  text_layer_set_background_color(minutes_layer, GColorClear);
+  text_layer_set_text_color(minutes_layer, GColorWhite);
   text_layer_set_text(minutes_layer, "10");
   text_layer_set_text_alignment(minutes_layer, GTextAlignmentCenter);
   text_layer_set_font(minutes_layer, s_res_bitham_30_black);
@@ -41,6 +44,8 @@ static void initialise_ui(void) {
   
   // unit_layer
   unit_layer = text_layer_create(GRect(22, 97, 79, 31));
+  text_layer_set_background_color(unit_layer, GColorClear);
+  text_layer_set_text_color(unit_layer, GColorWhite);
   text_layer_set_text(unit_layer, "Minutes");
   text_layer_set_text_alignment(unit_layer, GTextAlignmentCenter);
   text_layer_set_font(unit_layer, s_res_gothic_28_bold);
@@ -48,6 +53,8 @@ static void initialise_ui(void) {
   
   // title_layer
   title_layer = text_layer_create(GRect(2, 12, 120, 49));
+  text_layer_set_background_color(title_layer, GColorClear);
+  text_layer_set_text_color(title_layer, GColorWhite);
   text_layer_set_text(title_layer, "Snooze Delay");
   text_layer_set_text_alignment(title_layer, GTextAlignmentCenter);
   text_layer_set_font(title_layer, s_res_gothic_24_bold);
@@ -56,10 +63,12 @@ static void initialise_ui(void) {
   // action_layer
   action_layer = action_bar_layer_create();
   action_bar_layer_add_to_window(action_layer, s_window);
-  action_bar_layer_set_background_color(action_layer, GColorBlack);
+  action_bar_layer_set_background_color(action_layer, GColorWhite);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_upaction);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_SELECT, s_res_img_okaction);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_downaction);
+  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(124, 0, 20, 168));
+  IF_B(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, 168)));
   layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
 }
 
@@ -73,7 +82,6 @@ static void destroy_ui(void) {
   gbitmap_destroy(s_res_img_okaction);
   gbitmap_destroy(s_res_img_downaction);
 }
-// END AUTO-GENERATED UI CODE
 
 static void handle_window_unload(Window* window) {
   destroy_ui();

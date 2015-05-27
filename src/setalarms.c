@@ -9,18 +9,19 @@
 #define NUM_MENU_ALARM_ITEMS 8
   
 static alarm *s_alarms;
-  
-// BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
+
 static Window *s_window;
 static MenuLayer *alarms_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
-  window_set_fullscreen(s_window, false);
+  IF_A(window_set_fullscreen(s_window, true));
   
   // alarms_layer
-  alarms_layer = menu_layer_create(GRect(0, 0, 144, 152));
+  alarms_layer = menu_layer_create(GRect(0, 0, 144, 168));
   menu_layer_set_click_config_onto_window(alarms_layer, s_window);
+  IF_B(menu_layer_set_normal_colors(alarms_layer, GColorBlack, GColorWhite)); 
+  IF_B(menu_layer_set_highlight_colors(alarms_layer, GColorBlueMoon, GColorWhite));
   layer_add_child(window_get_root_layer(s_window), (Layer *)alarms_layer);
 }
 
@@ -28,7 +29,6 @@ static void destroy_ui(void) {
   window_destroy(s_window);
   menu_layer_destroy(alarms_layer);
 }
-// END AUTO-GENERATED UI CODE
 
 
 // Set menu section count

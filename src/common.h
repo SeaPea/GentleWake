@@ -1,6 +1,31 @@
 #pragma once
 #include <pebble.h>
 
+//#undef ACTION_BAR_WIDTH
+//#define ACTION_BAR_WIDTH 20
+  
+#ifdef PBL_COLOR
+#define IF_COLOR(statement)   (statement)
+#define IF_BW(statement)
+#define IF_COLORBW(color, bw) (color)
+#define COLOR_SCREEN 1
+#else
+#define IF_COLOR(statement)
+#define IF_BW(statement)    (statement)
+#define IF_COLORBW(color, bw) (bw)
+#define COLOR_SCREEN 0
+#endif
+
+#ifdef PBL_PLATFORM_BASALT
+#define IF_BA(basalt, aplite) (basalt)
+#define IF_B(basalt) (basalt)
+#define IF_A(aplite)
+#else
+#define IF_BA(basalt, aplite) (aplite)
+#define IF_B(basalt)
+#define IF_A(aplite) (aplite)
+#endif
+  
 typedef void (*SettingsClosedCallBack)();
   
 typedef struct alarm {

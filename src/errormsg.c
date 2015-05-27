@@ -1,3 +1,4 @@
+#include "common.h"
 #include "errormsg.h"
 #include <pebble.h>
 
@@ -12,7 +13,7 @@ static TextLayer *msg_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
-  window_set_fullscreen(s_window, false);
+  IF_A(window_set_fullscreen(s_window, true));
   
   s_res_gothic_28_bold = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
   s_res_gothic_18_bold = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
@@ -24,7 +25,7 @@ static void initialise_ui(void) {
   layer_add_child(window_get_root_layer(s_window), (Layer *)title_layer);
   
   // msg_layer
-  msg_layer = text_layer_create(GRect(3, 22, 138, 128));
+  msg_layer = text_layer_create(GRect(3, 22, 138, 140));
   text_layer_set_background_color(msg_layer, GColorClear);
   text_layer_set_text(msg_layer, "msg_layer");
   text_layer_set_text_alignment(msg_layer, GTextAlignmentCenter);

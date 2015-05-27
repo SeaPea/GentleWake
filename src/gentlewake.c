@@ -87,6 +87,24 @@ static int64_t day_diff(time_t date1, time_t date2) {
   return ((strip_time(date2) - strip_time(date1)) / (60*60*24));
 }
 
+// Gets the UTC offset of the local time in seconds 
+// (pass in an existing localtime struct tm to save creating another one, orelse pass NULL)
+static time_t get_UTC_offset(struct tm *t) {
+#ifdef PBL_PLATFORM_BASALT
+  if (t == NULL) {
+    time_t temp;
+    temp = time(NULL);
+    t = localtime(&temp);
+  }
+  
+  //return t->tm_gmtoff + ((t->tm_isdst > 1) ? 3600 : 0);
+  return 0;
+#else
+  // Aplite uses localtime instead of UTC for all time functions so always return 0
+  return 0; 
+#endif 
+}
+
 // Calculate which daily alarm (if any) will be next
 // (Takes into account if the alarm for today was reset like when Smart Alarm is active and turned off
 //  before the alarm time)
@@ -106,7 +124,7 @@ static int get_next_alarm() {
     next = d % 7;
     if (s_alarms[next].enabled && (d > t->tm_wday || s_alarms[next].hour > t->tm_hour || 
                                    (s_alarms[next].hour == t->tm_hour && s_alarms[next].minute > t->tm_min))) {
-      next_date = clock_to_timestamp(ad2wd(next), 0, 0);
+      next_date = clock_to_timestamp(ad2wd(next), 0, 0) + get_UTC_offset(t); 
       
       if (next_date >= s_skip_until)
         return next;
@@ -126,7 +144,7 @@ static time_t calc_skipnext() {
     case NEXT_ALARM_SKIPWEEK:
       return s_skip_until;
     default:
-      return strip_time(clock_to_timestamp(ad2wd(next_alarm), 0, 0)) + (60*60*24);
+      return strip_time(clock_to_timestamp(ad2wd(next_alarm), 0, 0) + get_UTC_offset(NULL)) + (60*60*24);
   }
 }
 
@@ -155,6 +173,66 @@ static int update_alarm_display() {
   update_info(s_info);
   return next_alarm;
 }
+
+/*
+static void test_mktime() {
+  
+  #ifdef PBL_PLATFORM_BASALT
+  struct tm *t;
+  time_t temp;
+  // Get current time
+  temp = time(NULL);
+  t = localtime(&temp);
+  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "GMT Offset: %d, Is DST: %d", t->tm_gmtoff, t->tm_isdst);
+  #endif
+  
+  struct tm before_dst_tm;
+  
+  // Oct 31 2015 7:00am (Before DST change)
+  before_dst_tm.tm_sec = 0;
+  before_dst_tm.tm_min = 0;
+  before_dst_tm.tm_hour = 6;
+  before_dst_tm.tm_mday = 31;
+  before_dst_tm.tm_mon = 9;
+  before_dst_tm.tm_year = 115;
+  before_dst_tm.tm_isdst = 1;
+#ifdef PBL_PLATFORM_BASALT
+  strcpy(before_dst_tm.tm_zone, "EDT");
+  before_dst_tm.tm_gmtoff = -5*60*60;
+#endif
+  
+  char b4_dst_str[30];
+  time_t b4_dst = mktime(&before_dst_tm);
+  strftime(b4_dst_str, 30, "%c %Z", &before_dst_tm);
+  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "b4_dst: %ld", b4_dst);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "b4_dst_str: %s", b4_dst_str);
+  
+  struct tm after_dst_tm;
+  
+  // Nov 1 2015 7:00am (After DST change)
+  after_dst_tm.tm_year = 115;
+  after_dst_tm.tm_mon = 10;
+  after_dst_tm.tm_mday = 1;
+  after_dst_tm.tm_hour = 6;
+  after_dst_tm.tm_min = 0;
+  after_dst_tm.tm_sec = 0;
+  after_dst_tm.tm_isdst = 1;
+#ifdef PBL_PLATFORM_BASALT
+  after_dst_tm.tm_gmtoff = -5*60*60;
+#endif
+  
+  time_t aft_dst = mktime(&after_dst_tm);
+  char aft_dst_str[30];
+  after_dst_tm.tm_isdst = -1;
+  strftime(aft_dst_str, 30, "%c %Z", &after_dst_tm); 
+  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "aft_dst: %ld", aft_dst);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "aft_dst_str: %s", aft_dst_str);
+  
+}
+*/
 
 // Timer handler that sets the wakeup time after a short delay
 // (allows UI to refresh beforehand since this sometimes takes a second or 2 for some reason)
@@ -207,8 +285,8 @@ static void set_wakeup_delayed(void *data) {
           else {
             char msg[150];
             snprintf(msg, sizeof(msg),
-                     "Unknown error while setting snooze alarm (%ld). A factory reset may be required if this happens again",
-                     s_wakeup_id);
+                     "Unknown error while setting snooze alarm (%d). A factory reset may be required if this happens again",
+                     (int)s_wakeup_id);
             show_errormsg(msg);
           }
         }
@@ -233,7 +311,8 @@ static void set_wakeup_delayed(void *data) {
         alarmday = ad2wd(next_alarm);
       
       // Get the time for the next alarm
-      time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[next_alarm].hour, s_alarms[next_alarm].minute);
+      time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[next_alarm].hour, s_alarms[next_alarm].minute) +
+        get_UTC_offset(t);
       // Strip seconds
       alarm_time -= alarm_time % 60;
       
@@ -292,8 +371,8 @@ static void set_wakeup_delayed(void *data) {
             show_errormsg(msg);
           } else {
             snprintf(msg, sizeof(msg),
-                     "Unknown error while setting alarm (%ld). A factory reset may be required if this happens again",
-                     s_wakeup_id);
+                     "Unknown error while setting alarm (%d). A factory reset may be required if this happens again",
+                     (int)s_wakeup_id);
             show_errormsg(msg);
           }
         }
@@ -306,7 +385,8 @@ static void set_wakeup_delayed(void *data) {
     if (s_settings.dst_check_day != 0) {
       // If DST check is on, set a wakeup for redoing alarms in case of a daylight savings time change
       WakeupId check_wakeup_id = 0;
-      time_t check_time = clock_to_timestamp(s_settings.dst_check_day, s_settings.dst_check_hour, 0);
+      time_t check_time = clock_to_timestamp(s_settings.dst_check_day, s_settings.dst_check_hour, 0) +
+        get_UTC_offset(NULL);
       check_time -= check_time % 60;
       check_wakeup_id = wakeup_schedule(check_time, WAKEUP_REASON_DSTCHECK, false);
       
@@ -740,6 +820,8 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 static void init(void) {
+  //test_mktime();
+  
   // Load all the settings
   if (persist_exists(ALARMS_KEY))
     persist_read_data(ALARMS_KEY, s_alarms, sizeof(s_alarms));

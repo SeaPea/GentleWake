@@ -1,8 +1,8 @@
+#include <pebble.h>
 #include "settings.h"
 #include "setalarms.h"
 #include "periodset.h"
 #include "common.h"
-#include <pebble.h>
 
 // Top-Level Settings Screen
   
@@ -28,18 +28,21 @@
 static alarm *s_alarms;
 static struct Settings_st *s_settings;
 static SettingsClosedCallBack s_settings_closed;
+static GFont s_header_font;
   
-// BEGIN AUTO-GENERATED UI CODE; DO NOT MODIFY
 static Window *s_window;
 static MenuLayer *settings_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
-  window_set_fullscreen(s_window, false);
+  IF_A(window_set_fullscreen(s_window, true));
+  s_header_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
   
   // settings_layer
-  settings_layer = menu_layer_create(GRect(0, 0, 144, 152));
+  settings_layer = menu_layer_create(GRect(0, 0, 144, 168));
   menu_layer_set_click_config_onto_window(settings_layer, s_window);
+  IF_B(menu_layer_set_normal_colors(settings_layer, GColorBlack, GColorWhite)); 
+  IF_B(menu_layer_set_highlight_colors(settings_layer, GColorBlueMoon, GColorWhite));
   layer_add_child(window_get_root_layer(s_window), (Layer *)settings_layer);
 }
 
@@ -48,7 +51,6 @@ static void destroy_ui(void) {
   menu_layer_destroy(settings_layer);
   if (s_settings_closed != NULL) s_settings_closed();
 }
-// END AUTO-GENERATED UI CODE
 
 // Set menu section count
 static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data) {
@@ -83,18 +85,24 @@ static int16_t menu_get_header_height_callback(MenuLayer *menu_layer, uint16_t s
 
 // Draw menu section headers
 static void menu_draw_header_callback(GContext* ctx, const Layer *cell_layer, uint16_t section_index, void *data) {
+  graphics_context_set_fill_color(ctx, COLOR_FALLBACK(GColorLightGray, GColorWhite));
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_fill_rect(ctx, layer_get_bounds(cell_layer), 0, GCornerNone);
   switch (section_index) {
     case MENU_ALARM_SECTION:
       menu_cell_basic_header_draw(ctx, cell_layer, NULL);
       break;
     case MENU_MISC_SECTION:
-      menu_cell_basic_header_draw(ctx, cell_layer, "Misc Settings");
+      graphics_draw_text(ctx, "Misc Settings", s_header_font, layer_get_bounds(cell_layer), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+      //menu_cell_basic_header_draw(ctx, cell_layer, "Misc Settings");
       break;
     case MENU_SMART_SECTION:
-      menu_cell_basic_header_draw(ctx, cell_layer, "Smart Alarm");
+      graphics_draw_text(ctx, "Smart Alarm", s_header_font, layer_get_bounds(cell_layer), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+      //menu_cell_basic_header_draw(ctx, cell_layer, "Smart Alarm");
       break;
     case MENU_DST_SECTION:
-      menu_cell_basic_header_draw(ctx, cell_layer, "DST Check");
+      graphics_draw_text(ctx, "DST Check", s_header_font, layer_get_bounds(cell_layer), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+      //menu_cell_basic_header_draw(ctx, cell_layer, "DST Check");
       break;
   }
 }
