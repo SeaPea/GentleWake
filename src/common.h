@@ -1,8 +1,5 @@
 #pragma once
 #include <pebble.h>
-
-//#undef ACTION_BAR_WIDTH
-//#define ACTION_BAR_WIDTH 20
   
 #ifdef PBL_COLOR
 #define IF_COLOR(statement)   (statement)
@@ -49,6 +46,7 @@ struct Settings_st {
   MoveSensitivty sensitivity;
   WeekDay dst_check_day;
   uint8_t dst_check_hour;
+  bool konamic_code_on;
 };
 
 typedef enum AlarmDay {

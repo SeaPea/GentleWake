@@ -8,7 +8,7 @@
   
 #define NUM_MENU_SECTIONS 4
 #define NUM_MENU_ALARM_ITEMS 1
-#define NUM_MENU_MISC_ITEMS 3
+#define NUM_MENU_MISC_ITEMS 4
 #define NUM_MENU_SMART_ITEMS 3
 #define NUM_MENU_DST_ITEMS 2
 #define MENU_ALARM_SECTION 0
@@ -19,6 +19,7 @@
 #define MENU_SNOOZEDELAY_ITEM 0
 #define MENU_DYNAMICSNOOZE_ITEM 1
 #define MENU_EASYLIGHT_ITEM 2
+#define MENU_KONAMICODE_ITEM 3
 #define MENU_SMARTALARM_ITEM 0
 #define MENU_SMARTPERIOD_ITEM 1
 #define MENU_MOVESENSITIVITY_ITEM 2
@@ -191,6 +192,11 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           // Enable/Disable Easy Light
           menu_cell_basic_draw(ctx, cell_layer, "Easy Light", s_settings->easy_light ? "ON - Hold up on alarm" : "OFF", NULL);
           break;
+        
+        case MENU_KONAMICODE_ITEM:
+          // Enable/Disable Konami Code
+          menu_cell_basic_draw(ctx, cell_layer, "Stop Alarm", s_settings->konamic_code_on ? "Konami Code" : "Double click", NULL);
+          break;
       }
       break;
 
@@ -286,6 +292,10 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
           break;
         case MENU_EASYLIGHT_ITEM:
           s_settings->easy_light = !s_settings->easy_light;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
+          break;
+        case MENU_KONAMICODE_ITEM:
+          s_settings->konamic_code_on = !s_settings->konamic_code_on;
           layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
       }

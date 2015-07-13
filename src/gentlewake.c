@@ -5,6 +5,7 @@
 #include "common.h"
 #include "errormsg.h"
 #include "mainbuttoninfo.h"
+#include "konamicode.h"
 
 // Main program unit
   
@@ -73,7 +74,8 @@ enum Settings_en {
   DSTCHECKDAY_KEY = 14,
   DSTCHECKHOUR_KEY = 15,
   LASTRESETDATE_KEY = 16,
-  SKIPUNTIL_KEY = 17
+  SKIPUNTIL_KEY = 17,
+  KONAMICODEON_KEY = 18
 };
 
 // Strip time component from a timestamp (leaving the date part)
@@ -85,24 +87,6 @@ static time_t strip_time(time_t timestamp) {
 // than date2 (if date2 is older a negative number will be returned)
 static int64_t day_diff(time_t date1, time_t date2) {
   return ((strip_time(date2) - strip_time(date1)) / (60*60*24));
-}
-
-// Gets the UTC offset of the local time in seconds 
-// (pass in an existing localtime struct tm to save creating another one, orelse pass NULL)
-static time_t get_UTC_offset(struct tm *t) {
-#ifdef PBL_PLATFORM_BASALT
-  if (t == NULL) {
-    time_t temp;
-    temp = time(NULL);
-    t = localtime(&temp);
-  }
-  
-  //return t->tm_gmtoff + ((t->tm_isdst > 1) ? 3600 : 0);
-  return 0;
-#else
-  // Aplite uses localtime instead of UTC for all time functions so always return 0
-  return 0; 
-#endif 
 }
 
 // Calculate which daily alarm (if any) will be next
@@ -124,7 +108,7 @@ static int get_next_alarm() {
     next = d % 7;
     if (s_alarms[next].enabled && (d > t->tm_wday || s_alarms[next].hour > t->tm_hour || 
                                    (s_alarms[next].hour == t->tm_hour && s_alarms[next].minute > t->tm_min))) {
-      next_date = clock_to_timestamp(ad2wd(next), 0, 0) + get_UTC_offset(t); 
+      next_date = clock_to_timestamp(ad2wd(next), 0, 0); 
       
       if (next_date >= s_skip_until)
         return next;
@@ -144,7 +128,7 @@ static time_t calc_skipnext() {
     case NEXT_ALARM_SKIPWEEK:
       return s_skip_until;
     default:
-      return strip_time(clock_to_timestamp(ad2wd(next_alarm), 0, 0) + get_UTC_offset(NULL)) + (60*60*24);
+      return strip_time(clock_to_timestamp(ad2wd(next_alarm), 0, 0)) + (60*60*24);
   }
 }
 
@@ -173,66 +157,6 @@ static int update_alarm_display() {
   update_info(s_info);
   return next_alarm;
 }
-
-/*
-static void test_mktime() {
-  
-  #ifdef PBL_PLATFORM_BASALT
-  struct tm *t;
-  time_t temp;
-  // Get current time
-  temp = time(NULL);
-  t = localtime(&temp);
-  
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "GMT Offset: %d, Is DST: %d", t->tm_gmtoff, t->tm_isdst);
-  #endif
-  
-  struct tm before_dst_tm;
-  
-  // Oct 31 2015 7:00am (Before DST change)
-  before_dst_tm.tm_sec = 0;
-  before_dst_tm.tm_min = 0;
-  before_dst_tm.tm_hour = 6;
-  before_dst_tm.tm_mday = 31;
-  before_dst_tm.tm_mon = 9;
-  before_dst_tm.tm_year = 115;
-  before_dst_tm.tm_isdst = 1;
-#ifdef PBL_PLATFORM_BASALT
-  strcpy(before_dst_tm.tm_zone, "EDT");
-  before_dst_tm.tm_gmtoff = -5*60*60;
-#endif
-  
-  char b4_dst_str[30];
-  time_t b4_dst = mktime(&before_dst_tm);
-  strftime(b4_dst_str, 30, "%c %Z", &before_dst_tm);
-  
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "b4_dst: %ld", b4_dst);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "b4_dst_str: %s", b4_dst_str);
-  
-  struct tm after_dst_tm;
-  
-  // Nov 1 2015 7:00am (After DST change)
-  after_dst_tm.tm_year = 115;
-  after_dst_tm.tm_mon = 10;
-  after_dst_tm.tm_mday = 1;
-  after_dst_tm.tm_hour = 6;
-  after_dst_tm.tm_min = 0;
-  after_dst_tm.tm_sec = 0;
-  after_dst_tm.tm_isdst = 1;
-#ifdef PBL_PLATFORM_BASALT
-  after_dst_tm.tm_gmtoff = -5*60*60;
-#endif
-  
-  time_t aft_dst = mktime(&after_dst_tm);
-  char aft_dst_str[30];
-  after_dst_tm.tm_isdst = -1;
-  strftime(aft_dst_str, 30, "%c %Z", &after_dst_tm); 
-  
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "aft_dst: %ld", aft_dst);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "aft_dst_str: %s", aft_dst_str);
-  
-}
-*/
 
 // Timer handler that sets the wakeup time after a short delay
 // (allows UI to refresh beforehand since this sometimes takes a second or 2 for some reason)
@@ -311,8 +235,7 @@ static void set_wakeup_delayed(void *data) {
         alarmday = ad2wd(next_alarm);
       
       // Get the time for the next alarm
-      time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[next_alarm].hour, s_alarms[next_alarm].minute) +
-        get_UTC_offset(t);
+      time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[next_alarm].hour, s_alarms[next_alarm].minute);
       // Strip seconds
       alarm_time -= alarm_time % 60;
       
@@ -385,8 +308,7 @@ static void set_wakeup_delayed(void *data) {
     if (s_settings.dst_check_day != 0) {
       // If DST check is on, set a wakeup for redoing alarms in case of a daylight savings time change
       WakeupId check_wakeup_id = 0;
-      time_t check_time = clock_to_timestamp(s_settings.dst_check_day, s_settings.dst_check_hour, 0) +
-        get_UTC_offset(NULL);
+      time_t check_time = clock_to_timestamp(s_settings.dst_check_day, s_settings.dst_check_hour, 0);
       check_time -= check_time % 60;
       check_wakeup_id = wakeup_schedule(check_time, WAKEUP_REASON_DSTCHECK, false);
       
@@ -534,6 +456,7 @@ static void save_settings_delayed(void *data) {
   persist_write_int(MOVESENSITIVITY_KEY, s_settings.sensitivity);
   persist_write_int(DSTCHECKDAY_KEY, s_settings.dst_check_day);
   persist_write_int(DSTCHECKHOUR_KEY, s_settings.dst_check_hour);
+  persist_write_bool(KONAMICODEON_KEY, s_settings.konamic_code_on);
 }
 
 // Callback function to indicate when the settings have been closed
@@ -556,6 +479,14 @@ static void settings_update() {
   if (s_loaded) set_wakeup(next_alarm);
 }
 
+// Shows the appropriate window for stopping the alarm based on the settings
+static void show_stopwin() {
+  if (s_settings.konamic_code_on)
+    show_konamicode(reset_alarm);
+  else
+    show_stopinstructions();
+}
+
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
   if (!s_snoozing && !s_monitoring) {
     // Disable Back button click when snoozing or monitoring sleep so we don't accidentally exit
@@ -568,7 +499,7 @@ static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
       hide_mainwin();
     }
   } else {
-    show_stopinstructions();
+    show_stopwin();
   }
 }
 
@@ -591,7 +522,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
       set_wakeup(s_alarms_on ? next_alarm : -1);
     }
   } else {
-    show_stopinstructions();
+    show_stopwin();
   }
 }
 
@@ -625,7 +556,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
     else
       show_mainbuttoninfo();
   } else {
-    show_stopinstructions();
+    show_stopwin();
   }
 }
 
@@ -640,14 +571,19 @@ static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
       // Show settings screen with current alarms and setings and a callback for when closed
       show_settings(s_alarms, &s_settings, settings_update);
   } else {
-    show_stopinstructions();
+    show_stopwin();
   }
 }
 
 static void multiclick_handler(ClickRecognizerRef recognizer, void *context) {
   // If alarm is active (or snoozing) or smart alarm is active, double clicking
   // any button will reset the alarm
-  if (s_alarm_active || s_monitoring) reset_alarm();
+  if (s_alarm_active || s_monitoring) {
+    if (s_settings.konamic_code_on)
+      show_konamicode(reset_alarm);
+    else
+      reset_alarm();
+  }
 }
 
 // Trap single and double clicks for ALL buttons
@@ -820,7 +756,6 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 static void init(void) {
-  //test_mktime();
   
   // Load all the settings
   if (persist_exists(ALARMS_KEY))
@@ -878,6 +813,10 @@ static void init(void) {
       s_settings.dst_check_hour = 4;
   } else
     s_settings.dst_check_hour = 4;
+  if (persist_exists(KONAMICODEON_KEY))
+    s_settings.konamic_code_on = persist_read_bool(KONAMICODEON_KEY);
+  else
+    s_settings.konamic_code_on = false;
   
   // Show the main screen and update the UI
   show_mainwin();

@@ -9,6 +9,46 @@
     "resources": {
         "media": [
             {
+                "file": "images/Up-Unsel.png",
+                "name": "IMAGE_UP_UNSEL",
+                "type": "png"
+            },
+            {
+                "file": "images/Up-Sel.png",
+                "name": "IMAGE_UP_SEL",
+                "type": "png"
+            },
+            {
+                "file": "images/Right-Unsel.png",
+                "name": "IMAGE_RIGHT_UNSEL",
+                "type": "png"
+            },
+            {
+                "file": "images/Right-Sel.png",
+                "name": "IMAGE_RIGHT_SEL",
+                "type": "png"
+            },
+            {
+                "file": "images/Down-Unsel.png",
+                "name": "IMAGE_DOWN_UNSEL",
+                "type": "png"
+            },
+            {
+                "file": "images/Down-Sel.png",
+                "name": "IMAGE_DOWN_SEL",
+                "type": "png"
+            },
+            {
+                "file": "images/UpAction2.png",
+                "name": "IMAGE_UPACTION2",
+                "type": "png"
+            },
+            {
+                "file": "images/DownAction2.png",
+                "name": "IMAGE_DOWNACTION2",
+                "type": "png"
+            },
+            {
                 "file": "images/NextAction.png",
                 "name": "IMG_NEXTACTION",
                 "type": "png"
@@ -68,7 +108,7 @@
         "basalt"
     ],
     "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
-    "versionLabel": "2.0",
+    "versionLabel": "2.1",
     "watchapp": {
         "watchface": false
     }
