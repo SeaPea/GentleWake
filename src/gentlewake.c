@@ -46,12 +46,19 @@ static bool s_loaded = false;
 static bool s_dst_check_started = false;
 
 // Vibrate alarm paterns - 2nd dimension: [next vibe delay (sec), vibe segment index, vibe segment length]
-static int vibe_patterns[24][3] = {{3, 0, 1}, {3, 0, 1}, {4, 1, 3}, {4, 1, 3}, {4, 2, 5}, {4, 2, 5}, 
+static int vibe_patterns_orig[18][3] = {{3, 0, 1}, {3, 0, 1}, {4, 1, 3}, {4, 1, 3}, {4, 2, 5}, {4, 2, 5}, 
                                    {3, 3, 1}, {3, 3, 1}, {4, 4, 3}, {4, 4, 3}, {5, 5, 5}, {5, 5, 5}, 
                                    {3, 6, 1}, {3, 6, 1}, {4, 7, 3}, {4, 7, 3}, {5, 8, 5}, {5, 8, 5}};
-static const uint32_t vibe_segments[12][5] = {{150, 0, 0, 0, 0}, {150, 500, 150, 0, 0}, {150, 500, 150, 500, 150},
+static uint32_t vibe_segments_orig[9][5] = {{150, 0, 0, 0, 0}, {150, 500, 150, 0, 0}, {150, 500, 150, 500, 150},
                                               {300, 0, 0, 0, 0}, {300, 500, 300, 0, 0}, {300, 500, 300, 500, 300},
                                               {600, 0, 0, 0, 0}, {600, 500, 600, 0, 0}, {600, 500, 600, 500, 600}};
+static int vibe_patterns_strong[24][3] = {{2, 0, 1}, {2, 0, 1}, {3, 1, 3}, {3, 1, 3}, {3, 2, 5}, {3, 2, 5}, 
+                                   {2, 3, 1}, {2, 3, 1}, {3, 4, 3}, {3, 4, 3}, {4, 5, 5}, {4, 5, 5}, 
+                                   {2, 6, 1}, {2, 6, 1}, {3, 7, 3}, {3, 7, 3}, {4, 8, 5}, {4, 8, 5}, 
+                                   {2, 8, 5}, {2, 8, 5}, {3, 8, 5}, {3, 8, 5}, {4, 8, 5}, {4, 8, 5}};
+static uint32_t vibe_segments_strong[9][5] = {{300, 0, 0, 0, 0}, {300, 250, 300, 0, 0}, {300, 250, 300, 250, 300},
+                                              {450, 0, 0, 0, 0}, {450, 250, 450, 0, 0}, {450, 250, 450, 250, 450},
+                                              {600, 0, 0, 0, 0}, {600, 250, 600, 0, 0}, {600, 250, 600, 250, 600}};
 static AppTimer *s_vibe_timer = NULL;
 
 static struct Settings_st s_settings;
@@ -75,7 +82,8 @@ enum Settings_en {
   DSTCHECKHOUR_KEY = 15,
   LASTRESETDATE_KEY = 16,
   SKIPUNTIL_KEY = 17,
-  KONAMICODEON_KEY = 18
+  KONAMICODEON_KEY = 18,
+  VIBEPATTERN_KEY = 19
 };
 
 // Strip time component from a timestamp (leaving the date part)
@@ -417,7 +425,41 @@ static void vibe_alarm() {
   if (s_alarm_active && ! s_snoozing) {
     // If still active and not snoozing
     
-    if (s_vibe_count >= (int)(sizeof(vibe_patterns) / sizeof(vibe_patterns[0]))) {
+    int pattern_length = 0;
+    int (*vibe_patterns)[3];
+    uint32_t (*vibe_segments)[5];
+    
+    switch (s_settings.vibe_pattern) {
+      case VP_NSG:
+        // Not-So-Gentle Pattern
+        pattern_length = (int)(sizeof(vibe_patterns_strong) / sizeof(vibe_patterns_strong[0]));
+        vibe_patterns = vibe_patterns_strong;
+        vibe_segments = vibe_segments_strong;
+        break;
+      case VP_NSG2Snooze:
+        if (s_snooze_count >= 2) {
+          // Not-So-Gentle Pattern after 2 snoozes
+          pattern_length = (int)(sizeof(vibe_patterns_strong) / sizeof(vibe_patterns_strong[0]));
+          vibe_patterns = vibe_patterns_strong;
+          vibe_segments = vibe_segments_strong;
+        } else {
+          // Gentle Pattern before 2 snoozes
+          pattern_length = (int)(sizeof(vibe_patterns_orig) / sizeof(vibe_patterns_orig[0]));
+          vibe_patterns = vibe_patterns_orig;
+          vibe_segments = vibe_segments_orig;
+        }
+        break;
+      default:
+        // Gentle pattern
+        pattern_length = (int)(sizeof(vibe_patterns_orig) / sizeof(vibe_patterns_orig[0]));
+        vibe_patterns = vibe_patterns_orig;
+        vibe_segments = vibe_segments_orig;
+        break;
+    }
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Vibe pattern length: %d", pattern_length);
+    
+    if (s_vibe_count >= pattern_length) {
       // If we've reach the end of the vibrate patterns...
       
       if (((s_settings.dynamic_snooze ? 3 : s_settings.snooze_delay) * s_snooze_count) > 60)
@@ -430,7 +472,7 @@ static void vibe_alarm() {
       // Make increasingly long vibrate patterns for the alarm
       
       // Setup timer event for next vibe using pattern array
-      if (s_vibe_count < (int)(sizeof(vibe_patterns) / sizeof(vibe_patterns[0]))) {
+      if (s_vibe_count < pattern_length) {
         s_vibe_timer = app_timer_register(vibe_patterns[s_vibe_count][0]*1000, handle_vibe_timer, NULL);
       }
       
@@ -457,6 +499,7 @@ static void save_settings_delayed(void *data) {
   persist_write_int(DSTCHECKDAY_KEY, s_settings.dst_check_day);
   persist_write_int(DSTCHECKHOUR_KEY, s_settings.dst_check_hour);
   persist_write_bool(KONAMICODEON_KEY, s_settings.konamic_code_on);
+  persist_write_int(VIBEPATTERN_KEY, s_settings.vibe_pattern);
 }
 
 // Callback function to indicate when the settings have been closed
@@ -579,9 +622,10 @@ static void multiclick_handler(ClickRecognizerRef recognizer, void *context) {
   // If alarm is active (or snoozing) or smart alarm is active, double clicking
   // any button will reset the alarm
   if (s_alarm_active || s_monitoring) {
-    if (s_settings.konamic_code_on)
+    if (s_settings.konamic_code_on) {
+      if (s_alarm_active) snooze_alarm();
       show_konamicode(reset_alarm);
-    else
+    } else
       reset_alarm();
   }
 }
@@ -817,6 +861,10 @@ static void init(void) {
     s_settings.konamic_code_on = persist_read_bool(KONAMICODEON_KEY);
   else
     s_settings.konamic_code_on = false;
+  if (persist_exists(VIBEPATTERN_KEY))
+    s_settings.vibe_pattern = persist_read_int(VIBEPATTERN_KEY);
+  else
+    s_settings.vibe_pattern = VP_Gentle;
   
   // Show the main screen and update the UI
   show_mainwin();
@@ -850,10 +898,10 @@ static void init(void) {
         // Else if recovering from a crash or forced exit, restart any snoozing/monitoring
         if (s_snoozing) {
           s_alarm_active = true;
-          show_snooze((time_t)s_wakeup_id);
+          show_snooze(wakeuptime);
           if (s_settings.easy_light) start_accel();
         } else if (s_monitoring) {
-          show_monitoring((time_t)s_wakeup_id);
+          show_monitoring(wakeuptime);
           start_accel();
         }
       }

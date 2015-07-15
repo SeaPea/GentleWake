@@ -2,6 +2,9 @@
 #include "common.h"
 #include "konamicode.h"
 
+// Screen for displaying and receiving a random sequence of button presses like
+// the 'Konami Code' for stopping an active alarm
+  
 static Window *s_window;
 static GBitmap *s_res_img_nextaction;
 static GBitmap *s_res_image_upaction2;
@@ -37,6 +40,7 @@ enum KonamiCodes {
 static enum KonamiCodes s_konami_sequence[5];
 static uint8_t s_current_code = 0;
 
+// Generates a random sequence of button presses and stores it in a static array
 static void gen_konami_sequence() {
   
   srand(time(NULL));
@@ -47,6 +51,7 @@ static void gen_konami_sequence() {
   
 }
 
+// Gets the matching bitmap for a button code and whether it should show as selected (successfully pressed)
 static GBitmap* get_code_img(enum KonamiCodes code, bool selected) {
   switch (code) {
     case KC_Up:
@@ -64,6 +69,7 @@ static GBitmap* get_code_img(enum KonamiCodes code, bool selected) {
   }
 }
 
+// (Re)initialize the bitmaps that show which buttons to press
 static void init_konami_bitmaps() {
   bitmap_layer_set_bitmap(s_bitmaplayer_1, get_code_img(s_konami_sequence[0], false));
   bitmap_layer_set_bitmap(s_bitmaplayer_2, get_code_img(s_konami_sequence[1], false));
@@ -72,6 +78,7 @@ static void init_konami_bitmaps() {
   bitmap_layer_set_bitmap(s_bitmaplayer_5, get_code_img(s_konami_sequence[4], false));
 }
 
+// Changes a code (button press) in the sequence to show as selected/succesfully pressed
 static void set_code_selected(uint8_t code_idx) {
   switch (code_idx) {
     case 0:
@@ -92,11 +99,13 @@ static void set_code_selected(uint8_t code_idx) {
   }
 }
 
+// Closes the window after a period of inactivity
 static void close_timeout(void *data) {
   s_tmr_close = NULL;
   hide_konamicode();
 }
 
+// Resets the timer that closes the window after 10 seconds of inactivity
 static void reset_close_timer() {
   if (s_tmr_close == NULL)
     s_tmr_close = app_timer_register(10000, close_timeout, NULL);
@@ -104,12 +113,14 @@ static void reset_close_timer() {
     app_timer_reschedule(s_tmr_close, 10000);
 }
 
+// Draw a border around the Konami Code instructions
 static void draw_border(Layer *layer, GContext *ctx) {
   graphics_context_set_stroke_color(ctx, GColorWhite);
   GRect layer_rect = layer_get_bounds(layer);
   graphics_draw_round_rect(ctx, GRect(0, 0, layer_rect.size.w, layer_rect.size.h), 8);
 }
 
+// Initialize all the window UI elements
 static void initialise_ui(void) {
   s_window = window_create();
   window_set_background_color(s_window, GColorBlack);
@@ -195,6 +206,7 @@ static void initialise_ui(void) {
   init_konami_bitmaps();
 }
 
+// Free memory from all the UI elements
 static void destroy_ui(void) {
   window_destroy(s_window);
   action_bar_layer_destroy(s_actionbarlayer);
@@ -218,21 +230,23 @@ static void destroy_ui(void) {
   gbitmap_destroy(s_img_down_sel);
 }
 
+// Process a button click to determine if it was successful or not
 static void process_click(enum KonamiCodes code) {
   if (s_konami_sequence[s_current_code] == code) {
     if (s_current_code == 4) {
       // Successfully entered entire konami code, call callback and close window
-      vibes_double_pulse();
       if (s_success_event != NULL) s_success_event();
+      vibes_double_pulse();
       hide_konamicode();
     } else {
       // One more successfully entered, move to next code
       set_code_selected(s_current_code);
       s_current_code++;
+      // Reset inactivity timer
       reset_close_timer();
     }
   } else {
-    // Wrong code entered, reset
+    // Wrong code entered, reset everything to go back to the start
     s_current_code = 0;
     vibes_long_pulse();
     init_konami_bitmaps();
@@ -262,6 +276,8 @@ static void handle_window_unload(Window* window) {
   destroy_ui();
 }
 
+// Show the Konami Code window with a method pointer that is called when the entire Konami Code is 
+// successfully entered
 void show_konamicode(CodeSuccessCallBack callback) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
@@ -269,11 +285,15 @@ void show_konamicode(CodeSuccessCallBack callback) {
   });
   window_stack_push(s_window, true);
   
+  // Store callback for calling later
   s_success_event = callback;
+  // Register button click events
   action_bar_layer_set_click_config_provider(s_actionbarlayer, click_config_provider);
+  // Start timer to close window after a few seconds of inactivity
   reset_close_timer();
 }
 
+// Hide the Konami Code window
 void hide_konamicode(void) {
   if (s_tmr_close != NULL) {
     app_timer_cancel(s_tmr_close);

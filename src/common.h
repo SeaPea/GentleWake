@@ -37,6 +37,12 @@ typedef enum MoveSensitivity {
   MS_HIGH = 3
 } MoveSensitivty;
 
+typedef enum VibePatterns {
+  VP_Gentle = 0,
+  VP_NSG = 1, // Not-So-Gentle
+  VP_NSG2Snooze = 2
+} VibePatterns;
+
 struct Settings_st {
   uint8_t snooze_delay;
   bool dynamic_snooze;
@@ -47,6 +53,7 @@ struct Settings_st {
   WeekDay dst_check_day;
   uint8_t dst_check_hour;
   bool konamic_code_on;
+  VibePatterns vibe_pattern;
 };
 
 typedef enum AlarmDay {

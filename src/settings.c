@@ -8,7 +8,7 @@
   
 #define NUM_MENU_SECTIONS 4
 #define NUM_MENU_ALARM_ITEMS 1
-#define NUM_MENU_MISC_ITEMS 4
+#define NUM_MENU_MISC_ITEMS 5
 #define NUM_MENU_SMART_ITEMS 3
 #define NUM_MENU_DST_ITEMS 2
 #define MENU_ALARM_SECTION 0
@@ -20,6 +20,7 @@
 #define MENU_DYNAMICSNOOZE_ITEM 1
 #define MENU_EASYLIGHT_ITEM 2
 #define MENU_KONAMICODE_ITEM 3
+#define MENU_VIBEPATTERN_ITEM 4
 #define MENU_SMARTALARM_ITEM 0
 #define MENU_SMARTPERIOD_ITEM 1
 #define MENU_MOVESENSITIVITY_ITEM 2
@@ -197,6 +198,24 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           // Enable/Disable Konami Code
           menu_cell_basic_draw(ctx, cell_layer, "Stop Alarm", s_settings->konamic_code_on ? "Konami Code" : "Double click", NULL);
           break;
+        
+        case MENU_VIBEPATTERN_ITEM:
+          // Change the vibration level
+          switch (s_settings->vibe_pattern) {
+            case VP_Gentle:
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "Gentle (Original)", NULL);
+              break;
+            case VP_NSG:
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "Not-So-Gentle (NSG)", NULL);
+              break;
+            case VP_NSG2Snooze:
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "NSG After 2 Snoozes", NULL);
+              break;
+            default:
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "???", NULL);
+              break;
+          }
+          break;
       }
       break;
 
@@ -296,6 +315,10 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
           break;
         case MENU_KONAMICODE_ITEM:
           s_settings->konamic_code_on = !s_settings->konamic_code_on;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
+          break;
+        case MENU_VIBEPATTERN_ITEM:
+          s_settings->vibe_pattern = (s_settings->vibe_pattern == VP_NSG2Snooze ? VP_Gentle : s_settings->vibe_pattern + 1);
           layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
       }
