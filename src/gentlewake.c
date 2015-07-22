@@ -25,7 +25,7 @@
   
 static bool s_alarms_on = true;
 static alarm s_alarms[7];
-static char s_info[25];
+static char s_info[45];
 static WakeupId s_wakeup_id = 0;
 static bool s_snoozing = false;
 static int s_snooze_count = 0;
@@ -140,11 +140,39 @@ static time_t calc_skipnext() {
   }
 }
 
+// Gets a timestamp from the alarm index
+static time_t alarm_to_timestamp(int alarm) {
+  struct tm *t;
+  time_t curr_time;
+      
+  // Get current time
+  curr_time = time(NULL);
+  t = localtime(&curr_time);
+  
+  WeekDay alarmday;
+  if (alarm == t->tm_wday && (s_alarms[alarm].hour > t->tm_hour || 
+                                   (s_alarms[alarm].hour == t->tm_hour && 
+                                    s_alarms[alarm].minute > t->tm_min)))
+    // If next alarm is today, use the TODAY enum
+    alarmday = TODAY;
+  else
+    // Else convert the day number to the WeekDay enum
+    alarmday = ad2wd(alarm);
+
+  // Get the time for the next alarm
+  time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[alarm].hour, s_alarms[alarm].minute);
+  // Strip seconds
+  alarm_time -= alarm_time % 60;
+  
+  return alarm_time;
+}
+
 // Generates the text to show what alarm is next
 static void gen_info_str(int next_alarm) {
   
   char day_str[4];
   char time_str[8];
+  char timeto_str[20];
   
   if (next_alarm == NEXT_ALARM_NONE) {
     strncpy(s_info, "NO ALARMS SET", sizeof(s_info));
@@ -154,7 +182,28 @@ static void gen_info_str(int next_alarm) {
   } else {    
     daynameshort(next_alarm, day_str, sizeof(day_str));
     gen_alarm_str(&s_alarms[next_alarm], time_str, sizeof(time_str));
-    snprintf(s_info, sizeof(s_info), "Next Alarm:\n%s %s", day_str, time_str);
+    
+    time_t time_to = alarm_to_timestamp(next_alarm) - time(NULL);
+    
+    if (time_to < (10 * 60 * 60)) {
+      // Add 'In X hrs, Y mins' text
+      int hours = time_to / (3600);
+      int mins = (time_to % (3600)) / 60;
+      if (hours == 0) {
+        snprintf(timeto_str, sizeof(timeto_str), "\nIn %d minute%s", mins, (mins == 1) ? "" : "s");
+      } else {
+        if (mins == 0) {
+          snprintf(timeto_str, sizeof(timeto_str), "\nIn %d hour%s", hours, (hours == 1) ? "" : "s");
+        } else {
+          snprintf(timeto_str, sizeof(timeto_str), "\nIn %d hr%s, %d min%s", hours, (hours == 1) ? "" : "s", mins, (mins == 1) ? "" : "s");
+        }
+      }
+    } else {
+      // Do not add any extra info
+      timeto_str[0] = '\0';
+    }
+    
+    snprintf(s_info, sizeof(s_info), "Next Alarm:\n%s %s%s", day_str, time_str, timeto_str);
   }
 }
 
@@ -232,20 +281,8 @@ static void set_wakeup_delayed(void *data) {
       curr_time = time(NULL);
       t = localtime(&curr_time);
       
-      WeekDay alarmday;
-      if (next_alarm == t->tm_wday && (s_alarms[next_alarm].hour > t->tm_hour || 
-                                       (s_alarms[next_alarm].hour == t->tm_hour && 
-                                        s_alarms[next_alarm].minute > t->tm_min)))
-        // If next alarm is today, use the TODAY enum
-        alarmday = TODAY;
-      else
-        // Else convert the day number to the WeekDay enum
-        alarmday = ad2wd(next_alarm);
-      
       // Get the time for the next alarm
-      time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[next_alarm].hour, s_alarms[next_alarm].minute);
-      // Strip seconds
-      alarm_time -= alarm_time % 60;
+      time_t alarm_time = alarm_to_timestamp(next_alarm);
       
       // If the smart alarm is on but not active, set the wakeup to the alarm time minus the monitor period
       if (s_settings.smart_alarm && !s_monitoring) 
@@ -456,8 +493,6 @@ static void vibe_alarm() {
         vibe_segments = vibe_segments_orig;
         break;
     }
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Vibe pattern length: %d", pattern_length);
     
     if (s_vibe_count >= pattern_length) {
       // If we've reach the end of the vibrate patterns...
@@ -796,6 +831,7 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   // Show the current time on the main screen
   if ((units_changed & MINUTE_UNIT) != 0) {
     update_clock();
+    if (!s_alarm_active && !s_snoozing && !s_monitoring) update_alarm_display();
   }
 }
 

@@ -9,7 +9,7 @@ enum onoff_modes {
   
 static char current_time[] = "00:00";
 static bool s_alarms_on;
-static char s_info[40];
+static char s_info[45];
 static char s_onoff_text[40];
 static enum onoff_modes s_onoff_mode;
 
@@ -72,7 +72,7 @@ static void draw_info(Layer *layer, GContext *ctx) {
   graphics_draw_round_rect(ctx, layer_get_bounds(layer), 8);
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
   GSize text_size = graphics_text_layout_get_content_size(s_info, s_res_gothic_18_bold, 
-                                                          GRect(5, 5, bounds.size.w-10, bounds.size.h-10), 
+                                                          GRect(5, 5, bounds.size.w-10, bounds.size.h-2), 
                                                           GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
   graphics_draw_text(ctx, s_info, s_res_gothic_18_bold, 
                      GRect(5, ((bounds.size.h-text_size.h)/2)-4, bounds.size.w-10, text_size.h), 
