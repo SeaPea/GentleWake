@@ -203,16 +203,16 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           // Change the vibration level
           switch (s_settings->vibe_pattern) {
             case VP_Gentle:
-              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "Gentle (Original)", NULL);
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Pattern", "Gentle (Original)", NULL);
               break;
             case VP_NSG:
-              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "Not-So-Gentle (NSG)", NULL);
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Pattern", "Not-So-Gentle (NSG)", NULL);
               break;
             case VP_NSG2Snooze:
-              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "NSG After 2 Snoozes", NULL);
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Pattern", "NSG After 2 Snoozes", NULL);
               break;
             default:
-              menu_cell_basic_draw(ctx, cell_layer, "Vibration Level", "???", NULL);
+              menu_cell_basic_draw(ctx, cell_layer, "Vibration Pattern", "???", NULL);
               break;
           }
           break;
