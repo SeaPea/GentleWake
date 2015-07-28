@@ -51,7 +51,7 @@ static void draw_onoff(Layer *layer, GContext *ctx) {
 #endif
   graphics_context_set_fill_color(ctx, fill_color);
   graphics_fill_rect(ctx, layer_get_bounds(layer), 8, GCornersAll);
-  IF_B(graphics_context_set_stroke_width(ctx, 3)); 
+  IF_3(graphics_context_set_stroke_width(ctx, 3)); 
   graphics_context_set_stroke_color(ctx, border_color);
   graphics_draw_round_rect(ctx, layer_get_bounds(layer), 8);
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
@@ -67,7 +67,7 @@ static void draw_info(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_fill_color(ctx, COLOR_FALLBACK(GColorPictonBlue, GColorBlack));
   graphics_fill_rect(ctx, layer_get_bounds(layer), 8, GCornersAll);
-  IF_B(graphics_context_set_stroke_width(ctx, 3)); 
+  IF_3(graphics_context_set_stroke_width(ctx, 3)); 
   graphics_context_set_stroke_color(ctx, COLOR_FALLBACK(GColorBlueMoon, GColorWhite));
   graphics_draw_round_rect(ctx, layer_get_bounds(layer), 8);
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
@@ -82,7 +82,7 @@ static void draw_info(Layer *layer, GContext *ctx) {
 static void initialise_ui(void) {
   s_window = window_create();
   window_set_background_color(s_window, GColorBlack);
-  IF_A(window_set_fullscreen(s_window, true));
+  IF_2(window_set_fullscreen(s_window, true));
   
   s_res_img_standby = gbitmap_create_with_resource(RESOURCE_ID_IMG_STANDBY);
   s_res_img_settings = gbitmap_create_with_resource(RESOURCE_ID_IMG_SETTINGS);
@@ -95,7 +95,7 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_standby);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_settings);
   layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(124, 0, 20, 168));
-  IF_B(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, 168)));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, 168)));
   layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
   
   // clockbg_layer

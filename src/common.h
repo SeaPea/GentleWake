@@ -13,14 +13,14 @@
 #define COLOR_SCREEN 0
 #endif
 
-#ifdef PBL_PLATFORM_BASALT
-#define IF_BA(basalt, aplite) (basalt)
-#define IF_B(basalt) (basalt)
-#define IF_A(aplite)
+#ifdef PBL_SDK_3
+#define IF_32(sdk3, sdk2) (sdk3)
+#define IF_3(sdk3) (sdk3)
+#define IF_2(sdk2)
 #else
-#define IF_BA(basalt, aplite) (aplite)
-#define IF_B(basalt)
-#define IF_A(aplite) (aplite)
+#define IF_32(sdk3, sdk2) (sdk2)
+#define IF_3(sdk3)
+#define IF_2(sdk2) (sdk2)
 #endif
   
 typedef void (*SettingsClosedCallBack)();
@@ -70,4 +70,7 @@ void dayname(int day, char *daystr, int slen);
 void daynameshort(int day, char *daystr, int slen);
 void gen_time_str(int hour, int min, char *timestr, int slen);
 void gen_alarm_str(alarm *alarmtime, char *alarmstr, int slen);
+time_t strip_time(time_t timestamp);
+int64_t day_diff(time_t date1, time_t date2);
+time_t get_UTC_offset(struct tm *t);
 WeekDay ad2wd(AlarmDay alarmday);

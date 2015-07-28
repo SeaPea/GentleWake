@@ -37,14 +37,14 @@ static MenuLayer *settings_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
-  IF_A(window_set_fullscreen(s_window, true));
+  IF_2(window_set_fullscreen(s_window, true));
   s_header_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
   
   // settings_layer
   settings_layer = menu_layer_create(GRect(0, 0, 144, 168));
   menu_layer_set_click_config_onto_window(settings_layer, s_window);
-  IF_B(menu_layer_set_normal_colors(settings_layer, GColorBlack, GColorWhite)); 
-  IF_B(menu_layer_set_highlight_colors(settings_layer, GColorBlueMoon, GColorWhite));
+  IF_3(menu_layer_set_normal_colors(settings_layer, GColorBlack, GColorWhite)); 
+  IF_3(menu_layer_set_highlight_colors(settings_layer, GColorBlueMoon, GColorWhite));
   layer_add_child(window_get_root_layer(s_window), (Layer *)settings_layer);
 }
 

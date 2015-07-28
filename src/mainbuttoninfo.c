@@ -17,7 +17,7 @@ static TextLayer *s_textlayer_8;
 static void initialise_ui(void) {
   s_window = window_create();
   window_set_background_color(s_window, GColorBlack);
-  IF_A(window_set_fullscreen(s_window, true));
+  IF_2(window_set_fullscreen(s_window, true));
   
   s_res_gothic_14 = fonts_get_system_font(FONT_KEY_GOTHIC_14);
   // s_textlayer_1

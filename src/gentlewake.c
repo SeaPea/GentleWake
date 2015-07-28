@@ -6,6 +6,7 @@
 #include "errormsg.h"
 #include "mainbuttoninfo.h"
 #include "konamicode.h"
+#include "skipwin.h"
 
 // Main program unit
   
@@ -86,17 +87,6 @@ enum Settings_en {
   VIBEPATTERN_KEY = 19
 };
 
-// Strip time component from a timestamp (leaving the date part)
-static time_t strip_time(time_t timestamp) {
-  return timestamp - (timestamp % (60*60*24));
-}
-
-// Calculates the number of days (not 24 hour periods) between 2 dates where date1 is older
-// than date2 (if date2 is older a negative number will be returned)
-static int64_t day_diff(time_t date1, time_t date2) {
-  return ((strip_time(date2) - strip_time(date1)) / (60*60*24));
-}
-
 // Calculate which daily alarm (if any) will be next
 // (Takes into account if the alarm for today was reset like when Smart Alarm is active and turned off
 //  before the alarm time)
@@ -110,6 +100,8 @@ static int get_next_alarm() {
   temp = time(NULL);
   t = localtime(&temp);
   
+  // If skipping more than 1 week of alarms, return a value indicating the s_skip_until time will
+  // need to be used to calculate the next alarm
   if (day_diff(temp, s_skip_until) >= 7) return NEXT_ALARM_SKIPWEEK;
   
   for (int d = t->tm_wday + (strip_time(temp) == s_last_reset_day ? 1 : 0); d <= (t->tm_wday + 7); d++) {
@@ -144,25 +136,52 @@ static time_t calc_skipnext() {
 static time_t alarm_to_timestamp(int alarm) {
   struct tm *t;
   time_t curr_time;
+  time_t alarm_time = 0;
       
   // Get current time
   curr_time = time(NULL);
   t = localtime(&curr_time);
   
   WeekDay alarmday;
-  if (alarm == t->tm_wday && (s_alarms[alarm].hour > t->tm_hour || 
-                                   (s_alarms[alarm].hour == t->tm_hour && 
-                                    s_alarms[alarm].minute > t->tm_min)))
-    // If next alarm is today, use the TODAY enum
-    alarmday = TODAY;
-  else
-    // Else convert the day number to the WeekDay enum
-    alarmday = ad2wd(alarm);
-
-  // Get the time for the next alarm
-  time_t alarm_time = clock_to_timestamp(alarmday, s_alarms[alarm].hour, s_alarms[alarm].minute);
-  // Strip seconds
-  alarm_time -= alarm_time % 60;
+  
+  if (alarm == NEXT_ALARM_SKIPWEEK) {
+    // Calculate the next alarm after the 'skip until' date
+    
+    // First get skip time in UTC
+    time_t skip_utc = s_skip_until - get_UTC_offset(NULL);
+    
+    // Then get a time struct in the local timezone
+    struct tm *alarm_t = localtime(&skip_utc);
+    int next_alarm = 0;
+    // Then find the next alarm on or after the skip date
+    for (int d = 0; d < 7; d++) {
+      next_alarm = (alarm_t->tm_wday + d) % 7;
+      if (s_alarms[next_alarm].enabled) {
+        // Get the wakeup time in UTC
+        alarm_time = skip_utc + (d * (24 * 60 * 60)) +
+          (s_alarms[next_alarm].hour * (60 * 60)) + (s_alarms[next_alarm].minute * 60);
+        break;
+      }
+    }
+    if (alarm_time == 0) {
+      // This should never happen, but we set the alarm time to something just in case
+      alarm_time = skip_utc + (7 * 60 * 60);
+    }
+  } else {
+    if (alarm == t->tm_wday && (s_alarms[alarm].hour > t->tm_hour || 
+                                     (s_alarms[alarm].hour == t->tm_hour && 
+                                      s_alarms[alarm].minute > t->tm_min)))
+      // If next alarm is today, use the TODAY enum
+      alarmday = TODAY;
+    else
+      // Else convert the day number to the WeekDay enum
+      alarmday = ad2wd(alarm);
+  
+    // Get the time for the next alarm
+    alarm_time = clock_to_timestamp(alarmday, s_alarms[alarm].hour, s_alarms[alarm].minute);
+    // Strip seconds
+    alarm_time -= alarm_time % 60;
+  }
   
   return alarm_time;
 }
@@ -177,7 +196,10 @@ static void gen_info_str(int next_alarm) {
   if (next_alarm == NEXT_ALARM_NONE) {
     strncpy(s_info, "NO ALARMS SET", sizeof(s_info));
   } else if (next_alarm == NEXT_ALARM_SKIPWEEK) {
-    struct tm *skip_until = localtime(&s_skip_until);
+    // Get the 'skip until' time in UTC  
+    time_t skip_utc = s_skip_until - get_UTC_offset(NULL);
+    // Then use localtime to get a date struct back in the local timezone
+    struct tm *skip_until = localtime(&skip_utc);
     strftime(s_info, sizeof(s_info), "Skip Until:%n%a, %b %d", skip_until);
   } else {    
     daynameshort(next_alarm, day_str, sizeof(day_str));
@@ -604,25 +626,20 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   }
 }
 
+static void update_skip(time_t skip_until) {
+  set_skipuntil(skip_until);
+  // Update alarm display
+  int next_alarm = update_alarm_display();
+  // Update wakeup
+  set_wakeup(next_alarm);
+}
+
 static void up_longclick_handler(ClickRecognizerRef recognizer, void *context) {
   if (!s_alarm_active && !s_snoozing && !s_monitoring) {
     // Disable long Up button press when alarm active, snoozing, or monitoring
     
-    if (day_diff(time(NULL), s_skip_until) < 7) {
-      // Repeatedly calculating the next alarm skip date, skips each subsequent alarm
-      set_skipuntil(calc_skipnext());
-      // Limit skips to 1 week into the future for now as more than 1 week will require
-      // some tweaking to the wakeup code
-      if (day_diff(time(NULL), s_skip_until) >= 7)
-        set_skipuntil(0);
-    } else
-      set_skipuntil(0);
-    
-    vibes_short_pulse();
-    // Update alarm display
-    int next_alarm = update_alarm_display();
-    // Update wakeup
-    set_wakeup(next_alarm);
+    // Show window for setting 'skip until' date
+    show_skipwin(s_skip_until, update_skip);
   }
 }
 
@@ -675,7 +692,7 @@ static void click_config_provider(void *context) {
   window_multi_click_subscribe(BUTTON_ID_UP, 2, 2, 300, true, multiclick_handler);
   window_multi_click_subscribe(BUTTON_ID_SELECT, 2, 2, 300, true, multiclick_handler);
   window_multi_click_subscribe(BUTTON_ID_DOWN, 2, 2, 300, true, multiclick_handler);
-  window_long_click_subscribe(BUTTON_ID_UP, 2000, up_longclick_handler, NULL);
+  window_long_click_subscribe(BUTTON_ID_UP, 1000, up_longclick_handler, NULL);
 }
 
 // Start the alarm, including vibrating the Pebble

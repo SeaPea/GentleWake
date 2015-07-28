@@ -13,7 +13,7 @@ static TextLayer *msg_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
-  IF_A(window_set_fullscreen(s_window, true));
+  IF_2(window_set_fullscreen(s_window, true));
   
   s_res_gothic_28_bold = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
   s_res_gothic_18_bold = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);

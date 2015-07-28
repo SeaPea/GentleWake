@@ -124,9 +124,7 @@ static void draw_border(Layer *layer, GContext *ctx) {
 static void initialise_ui(void) {
   s_window = window_create();
   window_set_background_color(s_window, GColorBlack);
-  #ifndef PBL_SDK_3
-    window_set_fullscreen(s_window, true);
-  #endif
+  IF_2(window_set_fullscreen(s_window, true));
   
   s_res_img_nextaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_NEXTACTION);
   s_res_image_upaction2 = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
@@ -147,7 +145,7 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_SELECT, s_res_img_nextaction);
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_DOWN, s_res_image_downaction2);
   layer_set_frame(action_bar_layer_get_layer(s_actionbarlayer), GRect(124, 0, 20, 168));
-  IF_B(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, 168)));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, 168)));
   layer_add_child(window_get_root_layer(s_window), (Layer *)s_actionbarlayer);
   
   // s_textlayer_backbutton
