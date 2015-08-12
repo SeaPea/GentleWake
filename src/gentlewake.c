@@ -23,6 +23,7 @@
 #define NEXT_ALARM_NONE -1
 #define NEXT_ALARM_SNOOZE -2
 #define NEXT_ALARM_SKIPWEEK -3
+#define NEXT_ALARM_ONETIME -4
   
 static bool s_alarms_on = true;
 static alarm s_alarms[7];
@@ -84,7 +85,8 @@ enum Settings_en {
   LASTRESETDATE_KEY = 16,
   SKIPUNTIL_KEY = 17,
   KONAMICODEON_KEY = 18,
-  VIBEPATTERN_KEY = 19
+  VIBEPATTERN_KEY = 19,
+  ONETIMEALARM_KEY = 20
 };
 
 // Calculate which daily alarm (if any) will be next
@@ -95,6 +97,9 @@ static int get_next_alarm() {
   time_t temp;
   time_t next_date;
   int next;
+  
+  // If the one-time alarm is enabled, that must be the next alarm
+  if (s_settings.one_time_alarm.enabled) return NEXT_ALARM_ONETIME;
   
   // Get current time
   temp = time(NULL);
@@ -144,7 +149,22 @@ static time_t alarm_to_timestamp(int alarm) {
   
   WeekDay alarmday;
   
-  if (alarm == NEXT_ALARM_SKIPWEEK) {
+  if (alarm == NEXT_ALARM_ONETIME) {
+    // Calculate whether the one-time alarm is today or tomorrow
+    if (s_settings.one_time_alarm.hour > t->tm_hour ||
+        (s_settings.one_time_alarm.hour == t->tm_hour &&
+         s_settings.one_time_alarm.minute > t->tm_min))
+      alarmday = TODAY; 
+    else
+      alarmday = ad2wd((t->tm_wday + 1) % 7); 
+    
+    // Get the time for the next alarm
+    alarm_time = clock_to_timestamp(alarmday, s_settings.one_time_alarm.hour, 
+                                    s_settings.one_time_alarm.minute);
+    // Strip seconds
+    alarm_time -= alarm_time % 60;
+    
+  } else if (alarm == NEXT_ALARM_SKIPWEEK) {
     // Calculate the next alarm after the 'skip until' date
     
     // First get skip time in UTC
@@ -189,7 +209,7 @@ static time_t alarm_to_timestamp(int alarm) {
 // Generates the text to show what alarm is next
 static void gen_info_str(int next_alarm) {
   
-  char day_str[4];
+  char day_str[9];
   char time_str[8];
   char timeto_str[20];
   
@@ -202,8 +222,30 @@ static void gen_info_str(int next_alarm) {
     struct tm *skip_until = localtime(&skip_utc);
     strftime(s_info, sizeof(s_info), "Skip Until:%n%a, %b %d", skip_until);
   } else {    
-    daynameshort(next_alarm, day_str, sizeof(day_str));
-    gen_alarm_str(&s_alarms[next_alarm], time_str, sizeof(time_str));
+    time_t temp = time(NULL);
+    struct tm *t = localtime(&temp);
+    
+    if (next_alarm == NEXT_ALARM_ONETIME) {
+      // Calculate whether the one-time alarm is today or tomorrow
+      if (s_settings.one_time_alarm.hour > t->tm_hour ||
+          (s_settings.one_time_alarm.hour == t->tm_hour &&
+           s_settings.one_time_alarm.minute > t->tm_min))
+        strncpy(day_str, "Today", sizeof(day_str));
+      else
+        strncpy(day_str, "Tomorrow", sizeof(day_str));
+      
+      gen_alarm_str(&(s_settings.one_time_alarm), time_str, sizeof(time_str));
+    } else {
+      
+      if (next_alarm == t->tm_wday)
+        strncpy(day_str, "Today", sizeof(day_str));
+      else if (next_alarm == ((t->tm_wday+1)%7))
+        strncpy(day_str, "Tomorrow", sizeof(day_str));
+      else
+        daynameshort(next_alarm, day_str, sizeof(day_str));
+      
+      gen_alarm_str(&s_alarms[next_alarm], time_str, sizeof(time_str));
+    }
     
     time_t time_to = alarm_to_timestamp(next_alarm) - time(NULL);
     
@@ -439,6 +481,12 @@ static void set_skipuntil(time_t skip_until) {
   persist_write_data(SKIPUNTIL_KEY, &s_skip_until, sizeof(s_skip_until));
 }
 
+// Sets whether the one-time alarm is enabled and saves it in case of an exit
+static void set_onetime_enabled(bool enabled) {
+  s_settings.one_time_alarm.enabled = enabled;
+  persist_write_data(ONETIMEALARM_KEY, &(s_settings.one_time_alarm), sizeof(s_settings.one_time_alarm));
+}
+
 // Turns off an active alarm or cancels a snooze and sets wakeup for next alarm
 static void reset_alarm() {
   int next;
@@ -447,6 +495,7 @@ static void reset_alarm() {
   set_snoozing(false);
   set_monitoring(false);
   set_snoozecount(0);
+  if (s_settings.one_time_alarm.enabled) set_onetime_enabled(false);
   set_lastresetday(time(NULL));
   
   // Update UI with next alarm details
@@ -557,6 +606,7 @@ static void save_settings_delayed(void *data) {
   persist_write_int(DSTCHECKHOUR_KEY, s_settings.dst_check_hour);
   persist_write_bool(KONAMICODEON_KEY, s_settings.konamic_code_on);
   persist_write_int(VIBEPATTERN_KEY, s_settings.vibe_pattern);
+  persist_write_data(ONETIMEALARM_KEY, &(s_settings.one_time_alarm), sizeof(s_settings.one_time_alarm));
 }
 
 // Callback function to indicate when the settings have been closed
@@ -617,17 +667,24 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
       update_onoff(s_alarms_on);
       // Reset skip
       set_skipuntil(0);
+      // Reset one-time alarm
+      if (s_settings.one_time_alarm.enabled) set_onetime_enabled(false);
+      
       int next_alarm = update_alarm_display();
       // Redo wakeup
-      set_wakeup(s_alarms_on ? next_alarm : -1);
+      set_wakeup(s_alarms_on ? next_alarm : NEXT_ALARM_NONE);
     }
   } else {
     show_stopwin();
   }
 }
 
+// Callback for when a 'skip until' date is set
 static void update_skip(time_t skip_until) {
   set_skipuntil(skip_until);
+  // Setting a 'skip until' date resets any one-time alarm
+  if (skip_until > 0 && s_settings.one_time_alarm.enabled) set_onetime_enabled(false);
+  
   // Update alarm display
   int next_alarm = update_alarm_display();
   // Update wakeup
@@ -918,6 +975,13 @@ static void init(void) {
     s_settings.vibe_pattern = persist_read_int(VIBEPATTERN_KEY);
   else
     s_settings.vibe_pattern = VP_Gentle;
+  if (persist_exists(ONETIMEALARM_KEY))
+    persist_read_data(ONETIMEALARM_KEY, &(s_settings.one_time_alarm), sizeof(s_settings.one_time_alarm));
+  else {
+    s_settings.one_time_alarm.enabled = false;
+    s_settings.one_time_alarm.hour = 7;
+    s_settings.one_time_alarm.minute = 0;
+  }
   
   // Show the main screen and update the UI
   show_mainwin();

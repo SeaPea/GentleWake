@@ -214,6 +214,9 @@ void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) 
   
   // Generate alarm screen time
   switch (day) {
+    case -2:
+      text_layer_set_text(day_layer, "One-Time Alarm");
+      break;
     case -1:
       text_layer_set_text(day_layer, "Alarm Every Day");
       break;

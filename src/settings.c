@@ -296,7 +296,7 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case MENU_ALARM_SECTION:
       switch (cell_index->row) {
         case MENU_ALARMS_ITEM:
-          show_setalarms(s_alarms);
+          show_setalarms(s_alarms, &(s_settings->one_time_alarm));
       }
       break;
     

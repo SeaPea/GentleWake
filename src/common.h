@@ -13,14 +13,14 @@
 #define COLOR_SCREEN 0
 #endif
 
-#ifdef PBL_SDK_3
-#define IF_32(sdk3, sdk2) (sdk3)
-#define IF_3(sdk3) (sdk3)
-#define IF_2(sdk2)
-#else
+#ifdef PBL_SDK_2
 #define IF_32(sdk3, sdk2) (sdk2)
 #define IF_3(sdk3)
 #define IF_2(sdk2) (sdk2)
+#else
+#define IF_32(sdk3, sdk2) (sdk3)
+#define IF_3(sdk3) (sdk3)
+#define IF_2(sdk2)
 #endif
   
 typedef void (*SettingsClosedCallBack)();
@@ -54,6 +54,7 @@ struct Settings_st {
   uint8_t dst_check_hour;
   bool konamic_code_on;
   VibePatterns vibe_pattern;
+  alarm one_time_alarm;
 };
 
 typedef enum AlarmDay {
