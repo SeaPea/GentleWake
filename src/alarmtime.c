@@ -23,11 +23,38 @@ static GBitmap *s_res_img_downaction;
 static GFont s_res_gothic_18_bold;
 static GFont s_res_bitham_30_black;
 static ActionBarLayer *action_layer;
-static TextLayer *day_layer;
-static TextLayer *hour_layer;
-static TextLayer *sep_layer;
-static TextLayer *minute_layer;
-static TextLayer *ampm_layer;
+static Layer *time_layer;
+
+static void draw_time(Layer *layer, GContext *ctx) {
+  graphics_context_set_text_color(ctx, GColorWhite);
+  // Draw title
+  graphics_draw_text(ctx, s_alarmtitle, s_res_gothic_18_bold, GRect(3, 20, 117, 37), 
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  
+  // Draw separater
+  graphics_draw_text(ctx, ":", s_res_bitham_30_black, GRect(56, 68, 12, 42), 
+                     GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  
+  // Draw AM/PM indicator
+  if (!clock_is_24h_style())
+    graphics_draw_text(ctx, s_hour >= 12 ? "PM" : "AM", s_res_bitham_30_black, GRect(36, 99, 52, 37), 
+                     GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  
+  // Set highlighted component
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_rect(ctx, GRect((s_selected == HOUR) ? 8 : 67, 68, 48, 36), 0, GCornerNone);
+  
+  // Draw hour
+  graphics_context_set_text_color(ctx, (s_selected == HOUR) ? GColorBlack : GColorWhite);
+  graphics_draw_text(ctx, s_hourstr, s_res_bitham_30_black, GRect(8, 68, 48, 36), 
+                     GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  
+  // Draw minutes
+  graphics_context_set_text_color(ctx, (s_selected == MINUTE) ? GColorBlack : GColorWhite);
+  graphics_draw_text(ctx, s_minutestr, s_res_bitham_30_black, GRect(67, 68, 48, 36), 
+                     GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  
+}
 
 static void initialise_ui(void) {
   s_window = window_create();
@@ -50,60 +77,15 @@ static void initialise_ui(void) {
   IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, 168)));
   layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
   
-  // day_layer
-  day_layer = text_layer_create(GRect(3, 20, 117, 37));
-  text_layer_set_background_color(day_layer, GColorClear);
-  text_layer_set_text_color(day_layer, GColorWhite);
-  text_layer_set_text(day_layer, "Wednesday Alarm");
-  text_layer_set_text_alignment(day_layer, GTextAlignmentCenter);
-  text_layer_set_font(day_layer, s_res_gothic_18_bold);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)day_layer);
-  
-  // hour_layer
-  hour_layer = text_layer_create(GRect(8, 68, 48, 36));
-  text_layer_set_background_color(hour_layer, GColorWhite);
-  text_layer_set_text_color(hour_layer, GColorBlack);
-  text_layer_set_text(hour_layer, "22");
-  text_layer_set_text_alignment(hour_layer, GTextAlignmentCenter);
-  text_layer_set_font(hour_layer, s_res_bitham_30_black);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)hour_layer);
-  
-  // sep_layer
-  sep_layer = text_layer_create(GRect(56, 68, 12, 42));
-  text_layer_set_background_color(sep_layer, GColorClear);
-  text_layer_set_text_color(sep_layer, GColorWhite);
-  text_layer_set_text(sep_layer, ":");
-  text_layer_set_text_alignment(sep_layer, GTextAlignmentCenter);
-  text_layer_set_font(sep_layer, s_res_bitham_30_black);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)sep_layer);
-  
-  // minute_layer
-  minute_layer = text_layer_create(GRect(67, 68, 48, 36));
-  text_layer_set_background_color(minute_layer, GColorClear);
-  text_layer_set_text_color(minute_layer, GColorWhite);
-  text_layer_set_text(minute_layer, "55");
-  text_layer_set_text_alignment(minute_layer, GTextAlignmentCenter);
-  text_layer_set_font(minute_layer, s_res_bitham_30_black);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)minute_layer);
-  
-  // ampm_layer
-  ampm_layer = text_layer_create(GRect(36, 99, 52, 37));
-  text_layer_set_background_color(ampm_layer, GColorClear);
-  text_layer_set_text_color(ampm_layer, GColorWhite);
-  text_layer_set_text(ampm_layer, "PM");
-  text_layer_set_text_alignment(ampm_layer, GTextAlignmentCenter);
-  text_layer_set_font(ampm_layer, s_res_bitham_30_black);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)ampm_layer);
+  time_layer = layer_create(GRect(0, 0, 124, 168));
+  layer_set_update_proc(time_layer, draw_time); 
+  layer_add_child(window_get_root_layer(s_window), time_layer);
 }
 
 static void destroy_ui(void) {
   window_destroy(s_window);
   action_bar_layer_destroy(action_layer);
-  text_layer_destroy(day_layer);
-  text_layer_destroy(hour_layer);
-  text_layer_destroy(sep_layer);
-  text_layer_destroy(minute_layer);
-  text_layer_destroy(ampm_layer);
+  layer_destroy(time_layer);
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_nextaction);
   gbitmap_destroy(s_res_img_downaction);
@@ -120,24 +102,10 @@ static void update_alarmtime() {
     snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour);
   } else {
     snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour > 12 ? s_hour - 12 : s_hour == 0 ? 12 : s_hour);
-    text_layer_set_text(ampm_layer, s_hour >= 12 ? "PM" : "AM");
   }
-  text_layer_set_text(hour_layer, s_hourstr);
   snprintf(s_minutestr, sizeof(s_minutestr), "%.2d", s_minute);
-  text_layer_set_text(minute_layer, s_minutestr);
   
-  // Invert the selected part
-  if (s_selected == HOUR) {
-    text_layer_set_background_color(hour_layer, GColorWhite);
-    text_layer_set_text_color(hour_layer, GColorBlack);
-    text_layer_set_background_color(minute_layer, GColorBlack);
-    text_layer_set_text_color(minute_layer, GColorWhite);
-  } else {
-    text_layer_set_background_color(hour_layer, GColorBlack);
-    text_layer_set_text_color(hour_layer, GColorWhite);
-    text_layer_set_background_color(minute_layer, GColorWhite);
-    text_layer_set_text_color(minute_layer, GColorBlack);
-  }
+  layer_mark_dirty(time_layer);
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -215,20 +183,17 @@ void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) 
   // Generate alarm screen time
   switch (day) {
     case -2:
-      text_layer_set_text(day_layer, "One-Time Alarm");
+      strcpy(s_alarmtitle, "One-Time Alarm");
       break;
     case -1:
-      text_layer_set_text(day_layer, "Alarm Every Day");
+      strcpy(s_alarmtitle, "Alarm Every Day");
       break;
     default:
       dayname(day, daystr, sizeof(daystr));
       snprintf(s_alarmtitle, sizeof(s_alarmtitle), "%s Alarm", daystr);
-      text_layer_set_text(day_layer, s_alarmtitle);
   }
   
   update_alarmtime();
-  
-  layer_set_hidden(text_layer_get_layer(ampm_layer), clock_is_24h_style());
   
   window_set_click_config_provider(s_window, click_config_provider);
   

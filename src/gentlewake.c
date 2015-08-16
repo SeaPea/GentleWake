@@ -1,12 +1,10 @@
 #include <pebble.h>
 #include "mainwin.h"
 #include "settings.h"
-#include "stopinstructions.h"
 #include "common.h"
-#include "errormsg.h"
-#include "mainbuttoninfo.h"
 #include "konamicode.h"
 #include "skipwin.h"
+#include "msg.h"
 
 // Main program unit
   
@@ -254,7 +252,10 @@ static void gen_info_str(int next_alarm) {
       int hours = time_to / (3600);
       int mins = (time_to % (3600)) / 60;
       if (hours == 0) {
-        snprintf(timeto_str, sizeof(timeto_str), "\nIn %d minute%s", mins, (mins == 1) ? "" : "s");
+        if (mins == 0)
+          strcpy(timeto_str, "\nIn <1 minute");
+        else
+          snprintf(timeto_str, sizeof(timeto_str), "\nIn %d minute%s", mins, (mins == 1) ? "" : "s");
       } else {
         if (mins == 0) {
           snprintf(timeto_str, sizeof(timeto_str), "\nIn %d hour%s", hours, (hours == 1) ? "" : "s");
@@ -326,13 +327,13 @@ static void set_wakeup_delayed(void *data) {
         if (s_wakeup_id < 0) {
           // If ID is still negative, show error message
           if (s_wakeup_id == E_RANGE)
-            show_errormsg("Unable to set the snooze alarm due to another app alarm.");
+            show_msg("OOPS", "Unable to set the snooze alarm due to another app alarm.", 0, true);
           else {
             char msg[150];
             snprintf(msg, sizeof(msg),
                      "Unknown error while setting snooze alarm (%d). A factory reset may be required if this happens again",
                      (int)s_wakeup_id);
-            show_errormsg(msg);
+            show_msg("OOPS", msg, 0, true);
           }
         }
       }
@@ -399,14 +400,13 @@ static void set_wakeup_delayed(void *data) {
             snprintf(msg, sizeof(msg), 
                      "Another wakeup is set for %s at %s +/-5 minutes in another app. Please either change the alarm time here or the other app.", 
                      daystr, timestr);
-            
-            show_errormsg(msg);
           } else {
             snprintf(msg, sizeof(msg),
                      "Unknown error while setting alarm (%d). A factory reset may be required if this happens again",
                      (int)s_wakeup_id);
-            show_errormsg(msg);
           }
+          
+          show_msg("OOPS", msg, 0, true);
         }
       }
       
@@ -634,7 +634,7 @@ static void show_stopwin() {
   if (s_settings.konamic_code_on)
     show_konamicode(reset_alarm);
   else
-    show_stopinstructions();
+    show_msg("INSTRUCTIONS", "Hold Back button to exit app WITHOUT stopping alarm.\n\nDouble click ANY button to stop the alarm.", 10, false);
 }
 
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -705,8 +705,6 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   if (!s_snoozing && !s_monitoring) {
     if (s_alarm_active) 
       snooze_alarm();
-    else
-      show_mainbuttoninfo();
   } else {
     show_stopwin();
   }

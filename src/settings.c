@@ -51,6 +51,7 @@ static void initialise_ui(void) {
 static void destroy_ui(void) {
   window_destroy(s_window);
   menu_layer_destroy(settings_layer);
+  unload_periodset();
   if (s_settings_closed != NULL) s_settings_closed();
 }
 
@@ -296,7 +297,9 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case MENU_ALARM_SECTION:
       switch (cell_index->row) {
         case MENU_ALARMS_ITEM:
+          unload_periodset();
           show_setalarms(s_alarms, &(s_settings->one_time_alarm));
+          break;
       }
       break;
     

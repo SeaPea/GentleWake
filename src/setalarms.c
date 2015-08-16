@@ -100,9 +100,9 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
         
         default:
           // Set single day alarm
-          dayname(cell_index->row-1, daystr, sizeof(daystr));
-          gen_alarm_str(&s_alarms[cell_index->row-1], alarmtimestr, sizeof(alarmtimestr));
-          if (s_alarms[cell_index->row-1].enabled)
+          dayname(cell_index->row-2, daystr, sizeof(daystr));
+          gen_alarm_str(&s_alarms[cell_index->row-2], alarmtimestr, sizeof(alarmtimestr));
+          if (s_alarms[cell_index->row-2].enabled)
             snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
           else
             snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
@@ -161,9 +161,9 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
             
           break;
         default:
-          show_alarmtime(cell_index->row-1, 
-                         s_alarms[cell_index->row-1].enabled ? s_alarms[cell_index->row-1].hour : 7, 
-                         s_alarms[cell_index->row-1].enabled ? s_alarms[cell_index->row-1].minute : 0, 
+          show_alarmtime(cell_index->row-2, 
+                         s_alarms[cell_index->row-2].enabled ? s_alarms[cell_index->row-2].hour : 7, 
+                         s_alarms[cell_index->row-2].enabled ? s_alarms[cell_index->row-2].minute : 0, 
                          alarm_set);
       }
       break;
@@ -202,12 +202,12 @@ static void menu_longselect_callback(MenuLayer *menu_layer, MenuIndex *cell_inde
           }
           break;
         default:
-          if (s_alarms[cell_index->row-1].enabled) {
-            s_alarms[cell_index->row-1].enabled = false;
+          if (s_alarms[cell_index->row-2].enabled) {
+            s_alarms[cell_index->row-2].enabled = false;
           } else {
-            s_alarms[cell_index->row-1].enabled = true;
-            s_alarms[cell_index->row-1].hour = 7;
-            s_alarms[cell_index->row-1].minute = 0;
+            s_alarms[cell_index->row-2].enabled = true;
+            s_alarms[cell_index->row-2].hour = 7;
+            s_alarms[cell_index->row-2].minute = 0;
           }
       }
       layer_mark_dirty(menu_layer_get_layer(alarms_layer));

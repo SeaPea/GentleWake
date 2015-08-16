@@ -9,6 +9,11 @@
     "resources": {
         "media": [
             {
+                "file": "images/Settings.png",
+                "name": "IMG_SETTINGS",
+                "type": "png"
+            },
+            {
                 "file": "images/Up-Unsel.png",
                 "name": "IMAGE_UP_UNSEL",
                 "type": "png"
@@ -19,13 +24,13 @@
                 "type": "png"
             },
             {
-                "file": "images/Right-Unsel.png",
-                "name": "IMAGE_RIGHT_UNSEL",
+                "file": "images/Snooze.png",
+                "name": "IMG_SNOOZE",
                 "type": "png"
             },
             {
-                "file": "images/Right-Sel.png",
-                "name": "IMAGE_RIGHT_SEL",
+                "file": "images/Right-Unsel.png",
+                "name": "IMAGE_RIGHT_UNSEL",
                 "type": "png"
             },
             {
@@ -34,38 +39,18 @@
                 "type": "png"
             },
             {
-                "file": "images/Down-Sel.png",
-                "name": "IMAGE_DOWN_SEL",
-                "type": "png"
-            },
-            {
-                "file": "images/UpAction2.png",
-                "name": "IMAGE_UPACTION2",
-                "type": "png"
-            },
-            {
-                "file": "images/DownAction2.png",
-                "name": "IMAGE_DOWNACTION2",
-                "type": "png"
-            },
-            {
-                "file": "images/NextAction.png",
-                "name": "IMG_NEXTACTION",
-                "type": "png"
-            },
-            {
-                "file": "images/OKAction.png",
-                "name": "IMG_OKACTION",
-                "type": "png"
-            },
-            {
-                "file": "images/DownAction.png",
-                "name": "IMG_DOWNACTION",
+                "file": "images/Right-Sel.png",
+                "name": "IMAGE_RIGHT_SEL",
                 "type": "png"
             },
             {
                 "file": "images/UpAction.png",
                 "name": "IMG_UPACTION",
+                "type": "png"
+            },
+            {
+                "file": "images/NextAction.png",
+                "name": "IMG_NEXTACTION",
                 "type": "png"
             },
             {
@@ -85,18 +70,33 @@
                 "type": "png"
             },
             {
-                "file": "images/Snooze.png",
-                "name": "IMG_SNOOZE",
+                "file": "images/Down-Sel.png",
+                "name": "IMAGE_DOWN_SEL",
                 "type": "png"
             },
             {
-                "file": "images/Settings.png",
-                "name": "IMG_SETTINGS",
+                "file": "images/DownAction.png",
+                "name": "IMG_DOWNACTION",
+                "type": "png"
+            },
+            {
+                "file": "images/DownAction2.png",
+                "name": "IMAGE_DOWNACTION2",
                 "type": "png"
             },
             {
                 "file": "images/Standby.png",
                 "name": "IMG_STANDBY",
+                "type": "png"
+            },
+            {
+                "file": "images/UpAction2.png",
+                "name": "IMAGE_UPACTION2",
+                "type": "png"
+            },
+            {
+                "file": "images/OKAction.png",
+                "name": "IMG_OKACTION",
                 "type": "png"
             }
         ]
@@ -108,7 +108,7 @@
         "basalt"
     ],
     "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
-    "versionLabel": "2.2",
+    "versionLabel": "2.3",
     "watchapp": {
         "watchface": false
     }

@@ -3,12 +3,62 @@
 #include <pebble.h>
 
 // Screen for setting a time period in minutes
+
+static PeriodSetCallBack s_set_event;
+
+#ifdef PBL_PLATFORM_APLITE 
+// Have to use the built-in NumberWindow for Aplite to reduce the binary size
+// (would use it for Basalt with more memory, except it is broken in OS 3)
+static NumberWindow *s_num_window = NULL;
+
+static void selected_handler(struct NumberWindow *number_window, void *context) {
+  int minutes = number_window_get_value(s_num_window);
+  // Close this screen
+  hide_periodset();
+  // Pass back minutes value
+  s_set_event(minutes);
+}
+
+// Show the time period screen with a title, current # of mininutes, min and max limits, 
+// and a call back function that is called when the select button is pressed
+void show_periodset(char *title, int minutes, int min_minutes, int max_minutes, PeriodSetCallBack set_event) {
+  if (s_num_window == NULL) {
+    s_num_window = number_window_create(title, (NumberWindowCallbacks) {
+      .selected = selected_handler
+    }, NULL);
+  } else {
+    number_window_set_label(s_num_window, title);
+  }
   
+  number_window_set_min(s_num_window, min_minutes);
+  number_window_set_max(s_num_window, max_minutes);
+  number_window_set_value(s_num_window, minutes);
+  number_window_set_step_size(s_num_window, 1);
+  
+  // Store pointer to callback function
+  s_set_event = set_event;
+  
+  window_stack_push(number_window_get_window(s_num_window), true);
+}
+
+void hide_periodset(void) {
+  window_stack_remove(number_window_get_window(s_num_window), true);
+  unload_periodset();
+}
+
+void unload_periodset(void) {
+  if (s_num_window != NULL) {
+    number_window_destroy(s_num_window);
+    s_num_window = NULL;
+  }
+}
+#else
+// Create our own NumberWindow for Pebbles with more memory as the 
+// built-in NumberWindow is broken in OS 3
 static int s_minutes = 0;
 static int s_min_minutes = 0;
 static int s_max_minutes = 60;
 static char s_minute_str[3];
-static PeriodSetCallBack s_set_event;
 
 static Window *s_window;
 static GFont s_res_bitham_30_black;
@@ -146,3 +196,8 @@ void show_periodset(char *title, int minutes, int min_minutes, int max_minutes, 
 void hide_periodset(void) {
   window_stack_remove(s_window, true);
 }
+
+void unload_periodset(void) {
+  // do nothing
+}
+#endif
