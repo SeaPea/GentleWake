@@ -34,6 +34,13 @@ static void gen_konami_sequence() {
   
   for (int i = 0; i < 5; i++) {
     s_konami_sequence[i] = rand() % 3;
+    
+    // Prevent Consecutive-Repeats:
+    // If the current code in the sequence matches the previous code
+    // then regenerate the code for the current position
+    if ((i > 0) && (s_konami_sequence[i] == s_konami_sequence[i = 1])) {
+      i--;
+    }
   }
   
 }
