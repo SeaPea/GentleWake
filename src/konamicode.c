@@ -39,7 +39,7 @@ static void gen_konami_sequence() {
     int nRetry = 5;
     do {
       s_konami_sequence[i] = rand() % KC_Max;
-    } while ((i > 0) && (nRetry-- > 0) && (s_konami_sequence[i] == s_konami_sequence[i - 1]))
+    } while ((i > 0) && (--nRetry > 0) && (s_konami_sequence[i] == s_konami_sequence[i - 1]))
 
     // Special Case -- If we've exceeded our max retry in preventing a consecutive repeat
     // in the sequence, then just shift 1 code over from the previous code in the sequence.
