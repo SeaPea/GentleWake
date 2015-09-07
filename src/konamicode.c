@@ -21,7 +21,8 @@ static CodeSuccessCallBack s_success_event = NULL;
 enum KonamiCodes {
   KC_Up = 0,
   KC_Right = 1,
-  KC_Down = 2
+  KC_Down = 2,
+  KC_Max = 3
 };
 
 static enum KonamiCodes s_konami_sequence[5];
@@ -33,7 +34,18 @@ static void gen_konami_sequence() {
   srand(time(NULL));
   
   for (int i = 0; i < 5; i++) {
-    s_konami_sequence[i] = rand() % 3;
+    // Re-generate the code until it's not a consecutive repeat from the previous
+    // code in the sequence (with a retry upto 5 times).
+    int nRetry = 5;
+    do {
+      s_konami_sequence[i] = rand() % KC_Max;
+    } while ((i > 0) && (--nRetry > 0) && (s_konami_sequence[i] == s_konami_sequence[i - 1]))
+
+    // Special Case -- If we've exceeded our max retry in preventing a consecutive repeat
+    // in the sequence, then just shift 1 code over from the previous code in the sequence.
+    if ((i > 0) && (s_konami_sequence[i] == s_konami_sequence[i - 1])) {
+      s_konami_sequence[i] = (s_konami_sequence[i - 1] + 1) % KC_Max;
+    }
   }
   
 }
