@@ -106,14 +106,19 @@ static int get_next_alarm() {
   // If skipping more than 1 week of alarms, return a value indicating the s_skip_until time will
   // need to be used to calculate the next alarm
   if (day_diff(temp, s_skip_until) >= 7) return NEXT_ALARM_SKIPWEEK;
-  
+
   for (int d = t->tm_wday + (strip_time(temp) == s_last_reset_day ? 1 : 0); d <= (t->tm_wday + 7); d++) {
     next = d % 7;
     if (s_alarms[next].enabled && (d > t->tm_wday || s_alarms[next].hour > t->tm_hour || 
                                    (s_alarms[next].hour == t->tm_hour && s_alarms[next].minute > t->tm_min))) {
-      next_date = clock_to_timestamp(ad2wd(next), 0, 0); 
+      if (d == t->tm_wday)
+        next_date = strip_time(temp);
+      else
+        next_date = clock_to_timestamp(ad2wd(next), 0, 0);
       
-      if (next_date >= s_skip_until)
+      if (day_diff(temp, next_date) >= 7)
+        return NEXT_ALARM_SKIPWEEK;
+      else if (next_date >= s_skip_until)
         return next;
     }
   }
@@ -181,6 +186,7 @@ static time_t alarm_to_timestamp(int alarm) {
         break;
       }
     }
+    
     if (alarm_time == 0) {
       // This should never happen, but we set the alarm time to something just in case
       alarm_time = skip_utc + (7 * 60 * 60);
@@ -230,7 +236,7 @@ static void gen_info_str(int next_alarm) {
            s_settings.one_time_alarm.minute > t->tm_min))
         strncpy(day_str, "Today", sizeof(day_str));
       else
-        strncpy(day_str, "Tomorrow", sizeof(day_str));
+        strncpy(day_str, clock_is_24h_style() ? "Tomorrow" : "Tmrw", sizeof(day_str));
       
       gen_alarm_str(&(s_settings.one_time_alarm), time_str, sizeof(time_str));
     } else {
@@ -238,7 +244,7 @@ static void gen_info_str(int next_alarm) {
       if (next_alarm == t->tm_wday)
         strncpy(day_str, "Today", sizeof(day_str));
       else if (next_alarm == ((t->tm_wday+1)%7))
-        strncpy(day_str, "Tomorrow", sizeof(day_str));
+        strncpy(day_str, clock_is_24h_style() ? "Tomorrow" : "Tmrw", sizeof(day_str));
       else
         daynameshort(next_alarm, day_str, sizeof(day_str));
       

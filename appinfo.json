@@ -9,8 +9,8 @@
     "resources": {
         "media": [
             {
-                "file": "images/Settings.png",
-                "name": "IMG_SETTINGS",
+                "file": "images/NextAction.png",
+                "name": "IMG_NEXTACTION",
                 "type": "png"
             },
             {
@@ -19,8 +19,8 @@
                 "type": "png"
             },
             {
-                "file": "images/Up-Sel.png",
-                "name": "IMAGE_UP_SEL",
+                "file": "images/DownAction2.png",
+                "name": "IMAGE_DOWNACTION2",
                 "type": "png"
             },
             {
@@ -29,38 +29,43 @@
                 "type": "png"
             },
             {
-                "file": "images/Right-Unsel.png",
-                "name": "IMAGE_RIGHT_UNSEL",
-                "type": "png"
-            },
-            {
-                "file": "images/Down-Unsel.png",
-                "name": "IMAGE_DOWN_UNSEL",
-                "type": "png"
-            },
-            {
-                "file": "images/Right-Sel.png",
-                "name": "IMAGE_RIGHT_SEL",
-                "type": "png"
-            },
-            {
                 "file": "images/UpAction.png",
                 "name": "IMG_UPACTION",
                 "type": "png"
             },
             {
-                "file": "images/NextAction.png",
-                "name": "IMG_NEXTACTION",
+                "file": "images/Up.png",
+                "name": "IMG_UP",
+                "type": "png"
+            },
+            {
+                "file": "images/Standby.png",
+                "name": "IMG_STANDBY",
+                "type": "png"
+            },
+            {
+                "file": "images/Down-Sel.png",
+                "name": "IMAGE_DOWN_SEL",
+                "type": "png"
+            },
+            {
+                "file": "images/Up-Sel.png",
+                "name": "IMAGE_UP_SEL",
+                "type": "png"
+            },
+            {
+                "file": "images/DownAction.png",
+                "name": "IMG_DOWNACTION",
+                "type": "png"
+            },
+            {
+                "file": "images/UpAction2.png",
+                "name": "IMAGE_UPACTION2",
                 "type": "png"
             },
             {
                 "file": "images/Down.png",
                 "name": "IMG_DOWN",
-                "type": "png"
-            },
-            {
-                "file": "images/Up.png",
-                "name": "IMG_UP",
                 "type": "png"
             },
             {
@@ -70,33 +75,28 @@
                 "type": "png"
             },
             {
-                "file": "images/Down-Sel.png",
-                "name": "IMAGE_DOWN_SEL",
+                "file": "images/Right-Sel.png",
+                "name": "IMAGE_RIGHT_SEL",
                 "type": "png"
             },
             {
-                "file": "images/DownAction.png",
-                "name": "IMG_DOWNACTION",
+                "file": "images/Settings.png",
+                "name": "IMG_SETTINGS",
                 "type": "png"
             },
             {
-                "file": "images/DownAction2.png",
-                "name": "IMAGE_DOWNACTION2",
-                "type": "png"
-            },
-            {
-                "file": "images/Standby.png",
-                "name": "IMG_STANDBY",
-                "type": "png"
-            },
-            {
-                "file": "images/UpAction2.png",
-                "name": "IMAGE_UPACTION2",
+                "file": "images/Right-Unsel.png",
+                "name": "IMAGE_RIGHT_UNSEL",
                 "type": "png"
             },
             {
                 "file": "images/OKAction.png",
                 "name": "IMG_OKACTION",
+                "type": "png"
+            },
+            {
+                "file": "images/Down-Unsel.png",
+                "name": "IMAGE_DOWN_UNSEL",
                 "type": "png"
             }
         ]
@@ -108,7 +108,7 @@
         "basalt"
     ],
     "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
-    "versionLabel": "2.3",
+    "versionLabel": "2.4",
     "watchapp": {
         "watchface": false
     }

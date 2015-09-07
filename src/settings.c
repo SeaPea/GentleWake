@@ -6,15 +6,17 @@
 
 // Top-Level Settings Screen
   
-#define NUM_MENU_SECTIONS 4
+#define NUM_MENU_SECTIONS 5
 #define NUM_MENU_ALARM_ITEMS 1
 #define NUM_MENU_MISC_ITEMS 5
 #define NUM_MENU_SMART_ITEMS 3
 #define NUM_MENU_DST_ITEMS 2
+#define NUM_MENU_ABOUT_ITEMS 1
 #define MENU_ALARM_SECTION 0
 #define MENU_MISC_SECTION 1
 #define MENU_SMART_SECTION 2
 #define MENU_DST_SECTION 3
+#define MENU_ABOUT_SECTION 4
 #define MENU_ALARMS_ITEM 0
 #define MENU_SNOOZEDELAY_ITEM 0
 #define MENU_DYNAMICSNOOZE_ITEM 1
@@ -26,6 +28,7 @@
 #define MENU_MOVESENSITIVITY_ITEM 2
 #define MENU_DSTDAYCHECK_ITEM 0
 #define MENU_DSTDAYHOUR_ITEM 1
+#define MENU_VERSION_ITEM 0
   
 static alarm *s_alarms;
 static struct Settings_st *s_settings;
@@ -71,6 +74,8 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
       return NUM_MENU_SMART_ITEMS;
     case MENU_DST_SECTION:
       return NUM_MENU_DST_ITEMS;
+    case MENU_ABOUT_SECTION:
+      return NUM_MENU_ABOUT_ITEMS;
     default:
       return 0;
   }
@@ -106,6 +111,10 @@ static void menu_draw_header_callback(GContext* ctx, const Layer *cell_layer, ui
     case MENU_DST_SECTION:
       graphics_draw_text(ctx, "DST Check", s_header_font, layer_get_bounds(cell_layer), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
       //menu_cell_basic_header_draw(ctx, cell_layer, "DST Check");
+      break;
+    case MENU_ABOUT_SECTION:
+      graphics_draw_text(ctx, "About", s_header_font, layer_get_bounds(cell_layer), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+      //menu_cell_basic_header_draw(ctx, cell_layer, "About");
       break;
   }
 }
@@ -275,6 +284,14 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
         case MENU_DSTDAYHOUR_ITEM:
           snprintf(dst_check_hour_str, sizeof(dst_check_hour_str), "%d AM", s_settings->dst_check_hour);
           menu_cell_basic_draw(ctx, cell_layer, "DST Check Hour", dst_check_hour_str, NULL);
+          break;
+      }
+      break;
+    
+    case MENU_ABOUT_SECTION:
+      switch (cell_index->row) {
+        case MENU_VERSION_ITEM:
+          menu_cell_basic_draw(ctx, cell_layer, "Version", VERSION, NULL);
           break;
       }
       break;
