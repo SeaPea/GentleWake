@@ -175,10 +175,14 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
               if (last_day == -1)
                 last_day = 6;
               daynameshort(first_day, first_day_str, sizeof(first_day_str));
-              daynameshort(last_day, last_day_str, sizeof(last_day_str));
               gen_alarm_str(&s_alarms[first_day], alarm_str, sizeof(alarm_str));
-              // Show summary e.g. "Mon-Fri 7:00"
-              snprintf(alarm_summary, sizeof(alarm_summary), "%s-%s %s", first_day_str, last_day_str, alarm_str);
+              if (first_day == last_day)
+                snprintf(alarm_summary, sizeof(alarm_summary), "%s %s", first_day_str, alarm_str);
+              else {
+                daynameshort(last_day, last_day_str, sizeof(last_day_str));
+                // Show summary e.g. "Mon-Fri 7:00"
+                snprintf(alarm_summary, sizeof(alarm_summary), "%s-%s %s", first_day_str, last_day_str, alarm_str);
+              }
             }
           }
           menu_cell_basic_draw(ctx, cell_layer, "Set Alarms", alarm_summary, NULL);

@@ -33,21 +33,14 @@ static void gen_konami_sequence() {
   
   srand(time(NULL));
   
-  for (int i = 0; i < 5; i++) {
-    // Re-generate the code until it's not a consecutive repeat from the previous
-    // code in the sequence (with a retry upto 5 times).
-    int nRetry = 5;
-    do {
-      s_konami_sequence[i] = rand() % KC_Max;
-    } while ((i > 0) && (--nRetry > 0) && (s_konami_sequence[i] == s_konami_sequence[i - 1]));
-
-    // Special Case -- If we've exceeded our max retry in preventing a consecutive repeat
-    // in the sequence, then just shift 1 code over from the previous code in the sequence.
-    if ((i > 0) && (s_konami_sequence[i] == s_konami_sequence[i - 1])) {
-      s_konami_sequence[i] = (s_konami_sequence[i - 1] + 1) % KC_Max;
-    }
-  }
+  // Generate the first code
+  s_konami_sequence[0] = rand() % KC_Max;
   
+  for (int i = 1; i < 5; i++) {
+    // Generate the next code that is always different from the previous
+    s_konami_sequence[i] = rand() % (KC_Max - 1);
+    if (s_konami_sequence[i] >= s_konami_sequence[i-1]) s_konami_sequence[i]++;
+  }
 }
 
 // Gets the matching bitmap for a button code and whether it should show as selected (successfully pressed)

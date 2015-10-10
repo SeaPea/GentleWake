@@ -92,7 +92,7 @@ enum Settings_en {
 //  before the alarm time)
 static int get_next_alarm() {
   struct tm *t;
-  time_t temp;
+  time_t utc;
   time_t next_date;
   int next;
   
@@ -100,29 +100,45 @@ static int get_next_alarm() {
   if (s_settings.one_time_alarm.enabled) return NEXT_ALARM_ONETIME;
   
   // Get current time
-  temp = time(NULL);
-  t = localtime(&temp);
+  utc = time(NULL);
+  t = localtime(&utc);
+  
+  // Save localtime details as the t struct gets stomped on by clock_to_timestamp
+  int wday = t->tm_wday;
+  int hour = t->tm_hour;
+  int min = t->tm_min;
+  
+  // Get the 'skip until' time in UTC  
+  time_t skip_utc = s_skip_until - get_UTC_offset(t);
   
   // If skipping more than 1 week of alarms, return a value indicating the s_skip_until time will
   // need to be used to calculate the next alarm
-  if (day_diff(temp, s_skip_until) >= 7) return NEXT_ALARM_SKIPWEEK;
-
-  for (int d = t->tm_wday + (strip_time(temp) == s_last_reset_day ? 1 : 0); d <= (t->tm_wday + 7); d++) {
+  if (day_diff(utc, skip_utc) >= 7) return NEXT_ALARM_SKIPWEEK;
+  
+  // Scan through alarms over the next 7 days (skipping today if we already had an alarm today)
+  for (int d = wday + (strip_time(utc) == s_last_reset_day ? 1 : 0); d <= (wday + 7); d++) {
     next = d % 7;
-    if (s_alarms[next].enabled && (d > t->tm_wday || s_alarms[next].hour > t->tm_hour || 
-                                   (s_alarms[next].hour == t->tm_hour && s_alarms[next].minute > t->tm_min))) {
-      if (d == t->tm_wday)
-        next_date = strip_time(temp);
+    // Only look at alarms that are enabled and are after now
+    if (s_alarms[next].enabled && (d > wday || s_alarms[next].hour > hour || 
+                                   (s_alarms[next].hour == hour && s_alarms[next].minute > min))) {
+      if (d == wday)
+        // If alarm is today, strip time from current UTC time
+        next_date = strip_time(utc);
       else
-        next_date = clock_to_timestamp(ad2wd(next), 0, 0);
+        // Else get UTC midnight for the next alarm
+        next_date = strip_time(clock_to_timestamp(ad2wd(next), 0, 0));
       
-      if (day_diff(temp, next_date) >= 7)
+      if (s_skip_until != 0 && day_diff(utc, next_date) >= 7)
+        // If skipping and there are 7 days between now and then, show as skipping at least a week
+        // so that today does not get confused with today next week
         return NEXT_ALARM_SKIPWEEK;
-      else if (next_date >= s_skip_until)
+      else if (next_date >= strip_time(skip_utc))
+        // Else if next date is >= skip date (skip date is 0 if not skipping) we have the next alarm index
         return next;
     }
   }
   
+  // No alarms set
   return NEXT_ALARM_NONE;
 }
 
@@ -241,7 +257,9 @@ static void gen_info_str(int next_alarm) {
       gen_alarm_str(&(s_settings.one_time_alarm), time_str, sizeof(time_str));
     } else {
       
-      if (next_alarm == t->tm_wday)
+      if (next_alarm == t->tm_wday && (s_alarms[next_alarm].hour > t->tm_hour ||
+                                       (s_alarms[next_alarm].hour == t->tm_hour &&
+                                        s_alarms[next_alarm].minute > t->tm_min)))
         strncpy(day_str, "Today", sizeof(day_str));
       else if (next_alarm == ((t->tm_wday+1)%7))
         strncpy(day_str, clock_is_24h_style() ? "Tomorrow" : "Tmrw", sizeof(day_str));

@@ -1,7 +1,7 @@
 #pragma once
 #include <pebble.h>
   
-#define VERSION "2.4"
+#define VERSION "2.5"
   
 #ifdef PBL_COLOR
 #define IF_COLOR(statement)   (statement)
