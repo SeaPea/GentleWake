@@ -50,10 +50,10 @@ static void draw_onoff(Layer *layer, GContext *ctx) {
   fill_color = GColorBlack;
 #endif
   graphics_context_set_fill_color(ctx, fill_color);
-  graphics_fill_rect(ctx, layer_get_bounds(layer), 8, GCornersAll);
+  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24), GCornersAll);
   IF_3(graphics_context_set_stroke_width(ctx, 3)); 
   graphics_context_set_stroke_color(ctx, border_color);
-  graphics_draw_round_rect(ctx, layer_get_bounds(layer), 8);
+  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24));
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
   GSize text_size = graphics_text_layout_get_content_size(s_onoff_text, s_res_gothic_18_bold, 
                                                           GRect(5, 5, bounds.size.w-10, bounds.size.h-10), 
@@ -66,10 +66,10 @@ static void draw_onoff(Layer *layer, GContext *ctx) {
 static void draw_info(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_fill_color(ctx, COLOR_FALLBACK(GColorPictonBlue, GColorBlack));
-  graphics_fill_rect(ctx, layer_get_bounds(layer), 8, GCornersAll);
+  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24), GCornersAll);
   IF_3(graphics_context_set_stroke_width(ctx, 3)); 
   graphics_context_set_stroke_color(ctx, COLOR_FALLBACK(GColorBlueMoon, GColorWhite));
-  graphics_draw_round_rect(ctx, layer_get_bounds(layer), 8);
+  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24));
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
   GSize text_size = graphics_text_layout_get_content_size(s_info, s_res_gothic_18_bold, 
                                                           GRect(5, 5, bounds.size.w-10, bounds.size.h-2), 
@@ -80,9 +80,13 @@ static void draw_info(Layer *layer, GContext *ctx) {
 }
 
 static void initialise_ui(void) {
+  
   s_window = window_create();
-  window_set_background_color(s_window, GColorBlack);
   IF_2(window_set_fullscreen(s_window, true));
+  Layer *root_layer = window_get_root_layer(s_window);
+  GRect bounds = layer_get_bounds(root_layer); 
+  IF_2(bounds.size.h += 16);
+  window_set_background_color(s_window, GColorBlack);
   
   s_res_img_standby = gbitmap_create_with_resource(RESOURCE_ID_IMG_STANDBY);
   s_res_img_settings = gbitmap_create_with_resource(RESOURCE_ID_IMG_SETTINGS);
@@ -94,35 +98,39 @@ static void initialise_ui(void) {
   action_bar_layer_set_background_color(action_layer, GColorWhite);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_standby);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_settings);
-  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(124, 0, 20, 168));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, 168)));
-  layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
+#ifdef PBL_RECT
+  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
+#endif
+  layer_add_child(root_layer, (Layer *)action_layer);
   
-  // clockbg_layer
+#ifdef PBL_RECT
+  // clockbg_layer to make clock background black over action bar layer on rectangular Pebbles
   clockbg_layer = text_layer_create(GRect(0, 60, 144, 50));
   text_layer_set_background_color(clockbg_layer, GColorBlack);
   text_layer_set_text_color(clockbg_layer, GColorClear);
   text_layer_set_text(clockbg_layer, "    ");
-  layer_add_child(window_get_root_layer(s_window), (Layer *)clockbg_layer);
+  layer_add_child(root_layer, (Layer *)clockbg_layer);
+#endif
   
   // clock_layer
-  clock_layer = text_layer_create(GRect(0, 52, 144, 65));
+  clock_layer = text_layer_create(GRect(0 - PBL_IF_RECT_ELSE(0, ACTION_BAR_WIDTH/2), (bounds.size.h/2)-32-PBL_IF_ROUND_ELSE(2, 0), bounds.size.w, 65));
   text_layer_set_background_color(clock_layer, GColorClear);
   text_layer_set_text_color(clock_layer, GColorWhite);
   text_layer_set_text(clock_layer, "23:55");
   text_layer_set_text_alignment(clock_layer, GTextAlignmentCenter);
   text_layer_set_font(clock_layer, s_res_roboto_bold_subset_49);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)clock_layer);
+  layer_add_child(root_layer, (Layer *)clock_layer);
   
   // onoff_layer
-  onoff_layer = text_layer_create(GRect(2, 2, 119, 56));
+  onoff_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(2, (bounds.size.w/2)-65), (bounds.size.h/2)-82+PBL_IF_ROUND_ELSE(5, 0), 119, 56));
   layer_set_update_proc(text_layer_get_layer(onoff_layer), draw_onoff); 
-  layer_add_child(window_get_root_layer(s_window), (Layer *)onoff_layer);
+  layer_add_child(root_layer, (Layer *)onoff_layer);
   
   // info_layer
-  info_layer = text_layer_create(GRect(2, 110, 119, 56));
+  info_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(2, (bounds.size.w/2)-65), (bounds.size.h/2)+26-PBL_IF_ROUND_ELSE(10, 0), 119, 56));
   layer_set_update_proc(text_layer_get_layer(info_layer), draw_info); 
-  layer_add_child(window_get_root_layer(s_window), (Layer *)info_layer);
+  layer_add_child(root_layer, (Layer *)info_layer);
 }
 
 static void destroy_ui(void) {

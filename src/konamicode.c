@@ -122,8 +122,11 @@ static void draw_code(Layer *layer, GContext *ctx) {
 // Initialize all the window UI elements
 static void initialise_ui(void) {
   s_window = window_create();
-  window_set_background_color(s_window, GColorBlack);
   IF_2(window_set_fullscreen(s_window, true));
+  Layer *root_layer = window_get_root_layer(s_window);
+  GRect bounds = layer_get_bounds(root_layer);  
+  IF_2(bounds.size.h += 16);
+  window_set_background_color(s_window, GColorBlack);
   
   s_res_img_nextaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_NEXTACTION);
   s_res_image_upaction2 = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
@@ -138,24 +141,30 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_UP, s_res_image_upaction2);
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_SELECT, s_res_img_nextaction);
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_DOWN, s_res_image_downaction2);
-  layer_set_frame(action_bar_layer_get_layer(s_actionbarlayer), GRect(124, 0, 20, 168));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, 168)));
-  layer_add_child(window_get_root_layer(s_window), (Layer *)s_actionbarlayer);
+#ifdef PBL_RECT
+  layer_set_frame(action_bar_layer_get_layer(s_actionbarlayer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, bounds.size.h)));
+#endif
+  layer_add_child(root_layer, (Layer *)s_actionbarlayer);
   
   // s_textlayer_backbutton
-  s_textlayer_backbutton = text_layer_create(GRect(1, 4, 121, 45));
+  s_textlayer_backbutton = text_layer_create(GRect(1, 4, bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH+1, 0), 45));
   text_layer_set_background_color(s_textlayer_backbutton, GColorClear);
   text_layer_set_text_color(s_textlayer_backbutton, GColorWhite);
-  text_layer_set_text(s_textlayer_backbutton, "<- HOLD Back button to exit WITHOUT stopping alarm");
-  layer_add_child(window_get_root_layer(s_window), (Layer *)s_textlayer_backbutton);
+  text_layer_set_text(s_textlayer_backbutton, "<- HOLD Back button to exit without stopping alarm");
+  layer_add_child(root_layer, (Layer *)s_textlayer_backbutton);
+#ifndef PBL_RECT
+  text_layer_set_text_alignment(s_textlayer_backbutton, GTextAlignmentCenter);
+  text_layer_enable_screen_text_flow_and_paging(s_textlayer_backbutton, 1);
+#endif
   
   // Setup random konami code sequence
   s_current_code = 0;
   gen_konami_sequence();
   
   // s_layer_code
-  s_layer_code = layer_create(GRect(2, 50, 120, 115));
-  layer_add_child(window_get_root_layer(s_window), s_layer_code);
+  s_layer_code = layer_create(GRect(2+PBL_IF_ROUND_ELSE(25, 0), 50, 120, bounds.size.h-56));
+  layer_add_child(root_layer, s_layer_code);
   layer_set_update_proc(s_layer_code, draw_code);
 }
 

@@ -26,40 +26,45 @@ static ActionBarLayer *action_layer;
 static Layer *time_layer;
 
 static void draw_time(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer); 
+  
   graphics_context_set_text_color(ctx, GColorWhite);
   // Draw title
-  graphics_draw_text(ctx, s_alarmtitle, s_res_gothic_18_bold, GRect(3, 20, 117, 37), 
+  graphics_draw_text(ctx, s_alarmtitle, s_res_gothic_18_bold, GRect(3+PBL_IF_ROUND_ELSE(10, 0), (bounds.size.h/2)-56, bounds.size.w-6, 37), 
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
   
   // Draw separater
-  graphics_draw_text(ctx, ":", s_res_bitham_30_black, GRect(56, 68, 12, 42), 
+  graphics_draw_text(ctx, ":", s_res_bitham_30_black, GRect((bounds.size.w/2)-6, (bounds.size.h/2)-16, 12, 42), 
                      GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
   
   // Draw AM/PM indicator
   if (!clock_is_24h_style())
-    graphics_draw_text(ctx, s_hour >= 12 ? "PM" : "AM", s_res_bitham_30_black, GRect(36, 99, 52, 37), 
+    graphics_draw_text(ctx, s_hour >= 12 ? "PM" : "AM", s_res_bitham_30_black, GRect((bounds.size.w/2)-26, (bounds.size.h/2)+25, 52, 37), 
                      GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
   
   // Set highlighted component
   graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_rect(ctx, GRect((s_selected == HOUR) ? 8 : 67, 68, 48, 36), 0, GCornerNone);
+  graphics_fill_rect(ctx, GRect((bounds.size.w/2)-((s_selected == HOUR) ? 54 : -5), (bounds.size.h/2)-16, 48, 36), 0, GCornerNone);
   
   // Draw hour
   graphics_context_set_text_color(ctx, (s_selected == HOUR) ? GColorBlack : GColorWhite);
-  graphics_draw_text(ctx, s_hourstr, s_res_bitham_30_black, GRect(8, 68, 48, 36), 
+  graphics_draw_text(ctx, s_hourstr, s_res_bitham_30_black, GRect((bounds.size.w/2)-54, (bounds.size.h/2)-16, 48, 36), 
                      GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
   
   // Draw minutes
   graphics_context_set_text_color(ctx, (s_selected == MINUTE) ? GColorBlack : GColorWhite);
-  graphics_draw_text(ctx, s_minutestr, s_res_bitham_30_black, GRect(67, 68, 48, 36), 
+  graphics_draw_text(ctx, s_minutestr, s_res_bitham_30_black, GRect((bounds.size.w/2)+5, (bounds.size.h/2)-16, 48, 36), 
                      GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
   
 }
 
 static void initialise_ui(void) {
   s_window = window_create();
-  window_set_background_color(s_window, GColorBlack);
   IF_2(window_set_fullscreen(s_window, true));
+  Layer *root_layer = window_get_root_layer(s_window);
+  GRect bounds = layer_get_bounds(root_layer); 
+  IF_2(bounds.size.h += 16);
+  window_set_background_color(s_window, GColorBlack);
   
   s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_UPACTION);
   s_res_img_nextaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_NEXTACTION);
@@ -73,13 +78,15 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_upaction);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_SELECT, s_res_img_nextaction);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_downaction);
-  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(124, 0, 20, 168));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, 168)));
-  layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
+#ifdef PBL_RECT
+  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
+#endif
+  layer_add_child(root_layer, (Layer *)action_layer);
   
-  time_layer = layer_create(GRect(0, 0, 124, 168));
+  time_layer = layer_create(GRect(0, 0, bounds.size.w-ACTION_BAR_WIDTH, bounds.size.h));
   layer_set_update_proc(time_layer, draw_time); 
-  layer_add_child(window_get_root_layer(s_window), time_layer);
+  layer_add_child(root_layer, time_layer);
 }
 
 static void destroy_ui(void) {

@@ -17,24 +17,30 @@ static TextLayer *msg_layer;
 static void initialise_ui(void) {
   s_window = window_create();
   IF_2(window_set_fullscreen(s_window, true));
+  Layer *root_layer = window_get_root_layer(s_window);
+  GRect bounds = layer_get_bounds(root_layer); 
+  IF_2(bounds.size.h += 16);
   
   s_res_gothic_28_bold = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
   s_res_gothic_18_bold = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
   
   // title_layer
-  title_layer = text_layer_create(GRect(5, -4, 134, 32));
+  title_layer = text_layer_create(GRect(5, PBL_IF_RECT_ELSE(-4, 19), bounds.size.w-10, 32));
   text_layer_set_text(title_layer, "title_layer");
   text_layer_set_text_alignment(title_layer, GTextAlignmentCenter);
   text_layer_set_font(title_layer, s_res_gothic_28_bold);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)title_layer);
+  layer_add_child(root_layer, (Layer *)title_layer);
   
   // msg_layer
-  msg_layer = text_layer_create(GRect(3, 25, 138, 140));
+  msg_layer = text_layer_create(GRect(3, 25+PBL_IF_ROUND_ELSE(19, 0), bounds.size.w-6, bounds.size.h-28-PBL_IF_ROUND_ELSE(15, 0)));
   text_layer_set_background_color(msg_layer, GColorClear);
   text_layer_set_text(msg_layer, "msg_layer");
   text_layer_set_text_alignment(msg_layer, GTextAlignmentCenter);
   text_layer_set_font(msg_layer, s_res_gothic_18_bold);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)msg_layer);
+  layer_add_child(root_layer, (Layer *)msg_layer);
+#ifndef PBL_RECT
+  text_layer_enable_screen_text_flow_and_paging(msg_layer, 2);
+#endif
 }
 
 static void destroy_ui(void) {

@@ -17,13 +17,16 @@ static MenuLayer *alarms_layer;
 static void initialise_ui(void) {
   s_window = window_create();
   IF_2(window_set_fullscreen(s_window, true));
+  Layer *root_layer = window_get_root_layer(s_window);
+  GRect bounds = layer_get_bounds(root_layer); 
+  IF_2(bounds.size.h += 16);
   
   // alarms_layer
-  alarms_layer = menu_layer_create(GRect(0, 0, 144, 168));
+  alarms_layer = menu_layer_create(bounds);
   menu_layer_set_click_config_onto_window(alarms_layer, s_window);
   IF_3(menu_layer_set_normal_colors(alarms_layer, GColorBlack, GColorWhite)); 
   IF_3(menu_layer_set_highlight_colors(alarms_layer, GColorBlueMoon, GColorWhite));
-  layer_add_child(window_get_root_layer(s_window), (Layer *)alarms_layer);
+  layer_add_child(root_layer, (Layer *)alarms_layer);
 }
 
 static void destroy_ui(void) {

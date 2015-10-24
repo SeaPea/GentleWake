@@ -105,10 +105,11 @@
     "shortName": "Gentle Wake",
     "targetPlatforms": [
         "aplite",
-        "basalt"
+        "basalt",
+        "chalk"
     ],
     "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
-    "versionLabel": "2.5",
+    "versionLabel": "2.6",
     "watchapp": {
         "watchface": false
     }

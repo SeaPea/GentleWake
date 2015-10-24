@@ -292,7 +292,7 @@ static void gen_info_str(int next_alarm) {
       timeto_str[0] = '\0';
     }
     
-    snprintf(s_info, sizeof(s_info), "Next Alarm:\n%s %s%s", day_str, time_str, timeto_str);
+    snprintf(s_info, sizeof(s_info), "Next Alarm:%s\n%s %s", timeto_str, day_str, time_str);
   }
 }
 

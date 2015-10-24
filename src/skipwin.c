@@ -19,8 +19,11 @@ static TextLayer *s_textlayer_status;
 
 static void initialise_ui(void) {
   s_window = window_create();
-  window_set_background_color(s_window, GColorBlack);
   IF_2(window_set_fullscreen(s_window, true));
+  Layer *root_layer = window_get_root_layer(s_window);
+  GRect bounds = layer_get_bounds(root_layer); 
+  window_set_background_color(s_window, GColorBlack);
+  IF_2(bounds.size.h += 16);
   
   s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_UPACTION);
   s_res_img_okaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_OKACTION);
@@ -34,36 +37,38 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_UP, s_res_img_upaction);
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_SELECT, s_res_img_okaction);
   action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_DOWN, s_res_img_downaction);
-  layer_set_frame(action_bar_layer_get_layer(s_actionbarlayer), GRect(124, 0, 20, 168));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, 168)));
-  layer_add_child(window_get_root_layer(s_window), (Layer *)s_actionbarlayer);
+#ifdef PBL_RECT
+  layer_set_frame(action_bar_layer_get_layer(s_actionbarlayer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, bounds.size.h)));
+#endif
+  layer_add_child(root_layer, (Layer *)s_actionbarlayer);
   
   // s_textlayer_info
-  s_textlayer_info = text_layer_create(GRect(7, 25, 117, 32));
+  s_textlayer_info = text_layer_create(GRect(2, (bounds.size.h/2)-55, bounds.size.w-ACTION_BAR_WIDTH-4, 32));
   text_layer_set_background_color(s_textlayer_info, GColorClear);
   text_layer_set_text_color(s_textlayer_info, GColorWhite);
   text_layer_set_text(s_textlayer_info, "Skip Until:");
   text_layer_set_text_alignment(s_textlayer_info, GTextAlignmentCenter);
   text_layer_set_font(s_textlayer_info, s_res_gothic_24);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)s_textlayer_info);
+  layer_add_child(root_layer, (Layer *)s_textlayer_info);
   
   // s_textlayer_date
-  s_textlayer_date = text_layer_create(GRect(2, 64, 122, 32));
+  s_textlayer_date = text_layer_create(GRect(2, (bounds.size.h/2)-18, bounds.size.w-ACTION_BAR_WIDTH-4, 32));
   text_layer_set_background_color(s_textlayer_date, GColorClear);
   text_layer_set_text_color(s_textlayer_date, GColorWhite);
   text_layer_set_text(s_textlayer_date, "Thu, Feb 22");
   text_layer_set_text_alignment(s_textlayer_date, GTextAlignmentCenter);
   text_layer_set_font(s_textlayer_date, s_res_gothic_28);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)s_textlayer_date);
+  layer_add_child(root_layer, (Layer *)s_textlayer_date);
   
   // s_textlayer_status
-  s_textlayer_status = text_layer_create(GRect(7, 100, 117, 32));
+  s_textlayer_status = text_layer_create(GRect(7, (bounds.size.h/2)+18, bounds.size.w-ACTION_BAR_WIDTH-14, 32));
   text_layer_set_background_color(s_textlayer_status, GColorClear);
   text_layer_set_text_color(s_textlayer_status, GColorWhite);
   text_layer_set_text(s_textlayer_status, "(No skipping)");
   text_layer_set_text_alignment(s_textlayer_status, GTextAlignmentCenter);
   text_layer_set_font(s_textlayer_status, s_res_gothic_24);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)s_textlayer_status);
+  layer_add_child(root_layer, (Layer *)s_textlayer_status);
 }
 
 static void destroy_ui(void) {

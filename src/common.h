@@ -1,7 +1,7 @@
 #pragma once
 #include <pebble.h>
   
-#define VERSION "2.5"
+#define VERSION "2.6"
   
 #ifdef PBL_COLOR
 #define IF_COLOR(statement)   (statement)
@@ -24,7 +24,12 @@
 #define IF_3(sdk3) (sdk3)
 #define IF_2(sdk2)
 #endif
-  
+
+#ifdef PBL_RECT
+#undef ACTION_BAR_WIDTH
+#define ACTION_BAR_WIDTH 20
+#endif
+
 typedef void (*SettingsClosedCallBack)();
   
 typedef struct alarm {

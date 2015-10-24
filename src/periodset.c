@@ -74,8 +74,11 @@ static ActionBarLayer *action_layer;
 
 static void initialise_ui(void) {
   s_window = window_create();
+  IF_2(window_set_fullscreen(s_window, true));
+  Layer *root_layer = window_get_root_layer(s_window);
+  GRect bounds = layer_get_bounds(root_layer); 
   window_set_background_color(s_window, GColorBlack);
-  IF_2(window_set_fullscreen(s_window, false));
+  IF_2(bounds.size.h += 16);
   
   s_res_bitham_30_black = fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
   s_res_gothic_28_bold = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
@@ -84,31 +87,31 @@ static void initialise_ui(void) {
   s_res_img_okaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_OKACTION);
   s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_DOWNACTION);
   // minutes_layer
-  minutes_layer = text_layer_create(GRect(40, 63, 42, 36));
+  minutes_layer = text_layer_create(GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-21, (bounds.size.h/2)-19, 42, 36));
   text_layer_set_background_color(minutes_layer, GColorClear);
   text_layer_set_text_color(minutes_layer, GColorWhite);
   text_layer_set_text(minutes_layer, "10");
   text_layer_set_text_alignment(minutes_layer, GTextAlignmentCenter);
   text_layer_set_font(minutes_layer, s_res_bitham_30_black);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)minutes_layer);
+  layer_add_child(root_layer, (Layer *)minutes_layer);
   
   // unit_layer
-  unit_layer = text_layer_create(GRect(22, 97, 79, 31));
+  unit_layer = text_layer_create(GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-40, (bounds.size.h/2)+15, 80, 31));
   text_layer_set_background_color(unit_layer, GColorClear);
   text_layer_set_text_color(unit_layer, GColorWhite);
   text_layer_set_text(unit_layer, "Minutes");
   text_layer_set_text_alignment(unit_layer, GTextAlignmentCenter);
   text_layer_set_font(unit_layer, s_res_gothic_28_bold);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)unit_layer);
+  layer_add_child(root_layer, (Layer *)unit_layer);
   
   // title_layer
-  title_layer = text_layer_create(GRect(2, 12, 120, 49));
+  title_layer = text_layer_create(GRect(2+PBL_IF_ROUND_ELSE(ACTION_BAR_WIDTH/2, 0), (bounds.size.h/2)-70, bounds.size.w-ACTION_BAR_WIDTH-4, 49));
   text_layer_set_background_color(title_layer, GColorClear);
   text_layer_set_text_color(title_layer, GColorWhite);
   text_layer_set_text(title_layer, "Snooze Delay");
   text_layer_set_text_alignment(title_layer, GTextAlignmentCenter);
   text_layer_set_font(title_layer, s_res_gothic_24_bold);
-  layer_add_child(window_get_root_layer(s_window), (Layer *)title_layer);
+  layer_add_child(root_layer, (Layer *)title_layer);
   
   // action_layer
   action_layer = action_bar_layer_create();
@@ -117,9 +120,11 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_upaction);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_SELECT, s_res_img_okaction);
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_downaction);
-  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(124, 0, 20, 168));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, 168)));
-  layer_add_child(window_get_root_layer(s_window), (Layer *)action_layer);
+#ifdef PBL_RECT
+  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
+#endif
+  layer_add_child(root_layer, (Layer *)action_layer);
 }
 
 static void destroy_ui(void) {
