@@ -50,10 +50,10 @@ static void draw_onoff(Layer *layer, GContext *ctx) {
   fill_color = GColorBlack;
 #endif
   graphics_context_set_fill_color(ctx, fill_color);
-  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24), GCornersAll);
+  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0), GCornersAll);
   IF_3(graphics_context_set_stroke_width(ctx, 3)); 
   graphics_context_set_stroke_color(ctx, border_color);
-  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24));
+  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0));
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
   GSize text_size = graphics_text_layout_get_content_size(s_onoff_text, s_res_gothic_18_bold, 
                                                           GRect(5, 5, bounds.size.w-10, bounds.size.h-10), 
@@ -66,10 +66,10 @@ static void draw_onoff(Layer *layer, GContext *ctx) {
 static void draw_info(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_fill_color(ctx, COLOR_FALLBACK(GColorPictonBlue, GColorBlack));
-  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24), GCornersAll);
+  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0), GCornersAll);
   IF_3(graphics_context_set_stroke_width(ctx, 3)); 
   graphics_context_set_stroke_color(ctx, COLOR_FALLBACK(GColorBlueMoon, GColorWhite));
-  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 24));
+  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0));
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
   GSize text_size = graphics_text_layout_get_content_size(s_info, s_res_gothic_18_bold, 
                                                           GRect(5, 5, bounds.size.w-10, bounds.size.h-2), 
@@ -101,8 +101,9 @@ static void initialise_ui(void) {
 #ifdef PBL_RECT
   layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
   IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
-#endif
+  // Put Action Bar underneath other layers on rectangular Pebbles
   layer_add_child(root_layer, (Layer *)action_layer);
+#endif
   
 #ifdef PBL_RECT
   // clockbg_layer to make clock background black over action bar layer on rectangular Pebbles
@@ -123,14 +124,21 @@ static void initialise_ui(void) {
   layer_add_child(root_layer, (Layer *)clock_layer);
   
   // onoff_layer
-  onoff_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(2, (bounds.size.w/2)-65), (bounds.size.h/2)-82+PBL_IF_ROUND_ELSE(5, 0), 119, 56));
+  onoff_layer = text_layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)-82, 119, 56),
+                                                   GRect(-10, (bounds.size.h/2)-82, bounds.size.w+11, 56)));
   layer_set_update_proc(text_layer_get_layer(onoff_layer), draw_onoff); 
   layer_add_child(root_layer, (Layer *)onoff_layer);
   
   // info_layer
-  info_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(2, (bounds.size.w/2)-65), (bounds.size.h/2)+26-PBL_IF_ROUND_ELSE(10, 0), 119, 56));
+  info_layer = text_layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)+26, 119, 56),
+                                                 GRect(-10, (bounds.size.h/2)+24, bounds.size.w+11, 56)));
   layer_set_update_proc(text_layer_get_layer(info_layer), draw_info); 
   layer_add_child(root_layer, (Layer *)info_layer);
+  
+#ifdef PBL_ROUND
+  // Put Action Bar on top for Pebble Round
+  layer_add_child(root_layer, (Layer *)action_layer);
+#endif
 }
 
 static void destroy_ui(void) {
@@ -209,7 +217,7 @@ void show_snooze(time_t snooze_time) {
 
 void show_monitoring(time_t alarm_time) {
   s_onoff_mode = MODE_ACTIVE;
-  set_onoff_text("SMART ALARM ACTIVE");
+  set_onoff_text("SMART ALARM\nACTIVE");
   
   struct tm *t = localtime(&alarm_time);
   
