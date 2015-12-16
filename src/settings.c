@@ -147,7 +147,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
           // Alarms sub-menu
         
           // Determine if all alarms are off
-          for (int i = 0; i <= 6; i++) {
+          for (uint8_t i = 0; i <= 6; i++) {
             if (s_alarms[i].enabled) {
               all_off = false;
               break;
@@ -157,7 +157,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
             strncpy(alarm_summary, "All Off", sizeof(alarm_summary));
           } else {
             // Check if alarm times or on/off are mixed
-            for (int i = 0; i <= 6; i++) {
+            for (uint8_t i = 0; i <= 6; i++) {
               if (s_alarms[i].enabled) {
                 if (first_day == -1) {
                   first_day = i;
@@ -173,7 +173,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
             } else {
               // Else get the stretch of enabled alarm times and summarize it
               first_day = -1;
-              for (int i = 0; i <= 6; i++) {
+              for (uint8_t i = 0; i <= 6; i++) {
                 if (s_alarms[i].enabled && first_day == -1)
                   first_day = i;
                 if (first_day != -1 && last_day == -1 && !s_alarms[i].enabled)
@@ -309,12 +309,12 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   }
 }
 
-static void snoozedelay_set(int minutes) {
+static void snoozedelay_set(uint8_t minutes) {
   s_settings->snooze_delay = minutes;
   layer_mark_dirty(menu_layer_get_layer(settings_layer));
 }
 
-static void monitorperiod_set(int minutes) {
+static void monitorperiod_set(uint8_t minutes) {
   s_settings->monitor_period = minutes;
   layer_mark_dirty(menu_layer_get_layer(settings_layer));
 }

@@ -21,10 +21,10 @@ static GBitmap *s_res_img_settings;
 static GFont s_res_roboto_bold_subset_49;
 static GFont s_res_gothic_18_bold;
 static ActionBarLayer *action_layer;
-static TextLayer *clockbg_layer;
-static TextLayer *clock_layer;
-static TextLayer *onoff_layer;
-static TextLayer *info_layer;
+//static TextLayer *clockbg_layer;
+static Layer *clock_layer;
+static Layer *onoff_layer;
+static Layer *info_layer;
 
 static void draw_onoff(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
@@ -60,6 +60,20 @@ static void draw_onoff(Layer *layer, GContext *ctx) {
                                                           GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
   graphics_draw_text(ctx, s_onoff_text, s_res_gothic_18_bold, 
                      GRect(5, ((bounds.size.h-text_size.h)/2)-4, bounds.size.w-10, text_size.h), 
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+}
+
+static void draw_clock(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+  
+#ifdef PBL_RECT
+  // Cover middle section of action bar to give more room for clock
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_fill_rect(ctx, GRect(bounds.size.w-ACTION_BAR_WIDTH, 8, ACTION_BAR_WIDTH, 50), 0, GCornersAll);
+#endif
+  
+  graphics_context_set_text_color(ctx, GColorWhite);
+  graphics_draw_text(ctx, current_time, s_res_roboto_bold_subset_49, bounds, 
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 }
 
@@ -104,7 +118,7 @@ static void initialise_ui(void) {
   // Put Action Bar underneath other layers on rectangular Pebbles
   layer_add_child(root_layer, (Layer *)action_layer);
 #endif
-  
+  /*
 #ifdef PBL_RECT
   // clockbg_layer to make clock background black over action bar layer on rectangular Pebbles
   clockbg_layer = text_layer_create(GRect(0, 60, 144, 50));
@@ -113,27 +127,30 @@ static void initialise_ui(void) {
   text_layer_set_text(clockbg_layer, "    ");
   layer_add_child(root_layer, (Layer *)clockbg_layer);
 #endif
+  */
   
   // clock_layer
-  clock_layer = text_layer_create(GRect(0 - PBL_IF_RECT_ELSE(0, ACTION_BAR_WIDTH/2), (bounds.size.h/2)-32-PBL_IF_ROUND_ELSE(2, 0), bounds.size.w, 65));
+  /*clock_layer = text_layer_create(GRect(0 - PBL_IF_RECT_ELSE(0, ACTION_BAR_WIDTH/2), (bounds.size.h/2)-32-PBL_IF_ROUND_ELSE(2, 0), bounds.size.w, 65));
   text_layer_set_background_color(clock_layer, GColorClear);
   text_layer_set_text_color(clock_layer, GColorWhite);
   text_layer_set_text(clock_layer, "23:55");
   text_layer_set_text_alignment(clock_layer, GTextAlignmentCenter);
-  text_layer_set_font(clock_layer, s_res_roboto_bold_subset_49);
+  text_layer_set_font(clock_layer, s_res_roboto_bold_subset_49);*/
+  clock_layer = layer_create(GRect(0 - PBL_IF_RECT_ELSE(0, ACTION_BAR_WIDTH/2), (bounds.size.h/2)-32-PBL_IF_ROUND_ELSE(2, 0), bounds.size.w, 65));
+  layer_set_update_proc(clock_layer, draw_clock); 
   layer_add_child(root_layer, (Layer *)clock_layer);
   
   // onoff_layer
-  onoff_layer = text_layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)-82, 119, 56),
+  onoff_layer = layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)-82, 119, 56),
                                                    GRect(-10, (bounds.size.h/2)-82, bounds.size.w+11, 56)));
-  layer_set_update_proc(text_layer_get_layer(onoff_layer), draw_onoff); 
+  layer_set_update_proc(onoff_layer, draw_onoff); 
   layer_add_child(root_layer, (Layer *)onoff_layer);
   
   // info_layer
-  info_layer = text_layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)+26, 119, 56),
+  info_layer = layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)+26, 119, 56),
                                                  GRect(-10, (bounds.size.h/2)+24, bounds.size.w+11, 56)));
-  layer_set_update_proc(text_layer_get_layer(info_layer), draw_info); 
-  layer_add_child(root_layer, (Layer *)info_layer);
+  layer_set_update_proc(info_layer, draw_info); 
+  layer_add_child(root_layer, info_layer);
   
 #ifdef PBL_ROUND
   // Put Action Bar on top for Pebble Round
@@ -144,22 +161,23 @@ static void initialise_ui(void) {
 static void destroy_ui(void) {
   window_destroy(s_window);
   action_bar_layer_destroy(action_layer);
-  text_layer_destroy(clockbg_layer);
-  text_layer_destroy(clock_layer);
-  text_layer_destroy(onoff_layer);
-  text_layer_destroy(info_layer);
+  //text_layer_destroy(clockbg_layer);
+  layer_destroy(clock_layer);
+  layer_destroy(onoff_layer);
+  layer_destroy(info_layer);
   gbitmap_destroy(s_res_img_standby);
   gbitmap_destroy(s_res_img_settings);
 }
 
 static void set_onoff_text(const char *onoff_text) {
   strncpy(s_onoff_text, onoff_text, sizeof(s_onoff_text));
-  layer_mark_dirty(text_layer_get_layer(onoff_layer));
+  layer_mark_dirty(onoff_layer);
 }
 
 void update_clock() {
   clock_copy_time_string(current_time, sizeof(current_time));
-  text_layer_set_text(clock_layer, current_time);
+  //text_layer_set_text(clock_layer, current_time);
+  layer_mark_dirty(clock_layer);
 }
 
 void init_click_events(ClickConfigProvider click_config_provider) {
@@ -171,17 +189,17 @@ void update_onoff(bool on) {
   if (on) {
     s_onoff_mode = MODE_ON;
     set_onoff_text("Alarms Enabled");
-    layer_set_hidden(text_layer_get_layer(info_layer), false);
+    layer_set_hidden(info_layer, false);
   } else {
     s_onoff_mode = MODE_OFF;
     set_onoff_text("Alarms DISABLED");
-    layer_set_hidden(text_layer_get_layer(info_layer), true);
+    layer_set_hidden(info_layer, true);
   }
 }
 
 void update_info(char* text) {
   strncpy(s_info, text, sizeof(s_info));
-  layer_mark_dirty(text_layer_get_layer(info_layer));
+  layer_mark_dirty(info_layer);
 }
 
 void show_alarm_ui(bool on) {

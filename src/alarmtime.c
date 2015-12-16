@@ -4,15 +4,19 @@
 
 // Screen for setting alarm times
 
+#define LEN_HOUR 3
+#define LEN_MIN 3
+#define MAX_TITLE 16
+
 // Enum for indicating which alarm time part is selected
 enum part {HOUR, MINUTE};
   
-static int s_day;
-static int s_hour;
-static int s_minute;
-static char s_hourstr[3];
-static char s_minutestr[3];
-static char s_alarmtitle[16];
+static int8_t s_day;
+static uint8_t s_hour;
+static uint8_t s_minute;
+static char s_hourstr[LEN_HOUR];
+static char s_minutestr[LEN_MIN];
+static char *s_alarmtitle;
 static enum part s_selected = HOUR;
 static AlarmTimeCallBack s_set_event;
 
@@ -59,6 +63,8 @@ static void draw_time(Layer *layer, GContext *ctx) {
 }
 
 static void initialise_ui(void) {
+  s_alarmtitle = malloc(MAX_TITLE);
+  
   s_window = window_create();
   IF_2(window_set_fullscreen(s_window, true));
   Layer *root_layer = window_get_root_layer(s_window);
@@ -96,6 +102,8 @@ static void destroy_ui(void) {
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_nextaction);
   gbitmap_destroy(s_res_img_downaction);
+  
+  free(s_alarmtitle);
 }
 
 static void handle_window_unload(Window* window) {
@@ -106,11 +114,11 @@ static void handle_window_unload(Window* window) {
 static void update_alarmtime() {
   
   if (clock_is_24h_style()) {
-    snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour);
+    snprintf(s_hourstr, LEN_HOUR, "%d", s_hour);
   } else {
-    snprintf(s_hourstr, sizeof(s_hourstr), "%d", s_hour > 12 ? s_hour - 12 : s_hour == 0 ? 12 : s_hour);
+    snprintf(s_hourstr, LEN_HOUR, "%d", s_hour > 12 ? s_hour - 12 : s_hour == 0 ? 12 : s_hour);
   }
-  snprintf(s_minutestr, sizeof(s_minutestr), "%.2d", s_minute);
+  snprintf(s_minutestr, LEN_MIN, "%.2d", s_minute);
   
   layer_mark_dirty(time_layer);
 }
@@ -170,7 +178,7 @@ static void click_config_provider(void *context) {
   window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 50, down_click_handler);
 }
 
-void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) {
+void show_alarmtime(int8_t day, uint8_t hour, uint8_t minute, AlarmTimeCallBack set_event) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
@@ -197,7 +205,7 @@ void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event) 
       break;
     default:
       dayname(day, daystr, sizeof(daystr));
-      snprintf(s_alarmtitle, sizeof(s_alarmtitle), "%s Alarm", daystr);
+      snprintf(s_alarmtitle, MAX_TITLE, "%s Alarm", daystr);
   }
   
   update_alarmtime();

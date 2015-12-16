@@ -9,95 +9,102 @@
     "resources": {
         "media": [
             {
-                "file": "images/NextAction.png",
-                "name": "IMG_NEXTACTION",
-                "type": "png"
+                "file": "images/AppIcon.png",
+                "menuIcon": true,
+                "name": "IMG_APPICON",
+                "type": "bitmap"
             },
             {
                 "file": "images/Up-Unsel.png",
                 "name": "IMAGE_UP_UNSEL",
-                "type": "png"
-            },
-            {
-                "file": "images/DownAction2.png",
-                "name": "IMAGE_DOWNACTION2",
-                "type": "png"
-            },
-            {
-                "file": "images/Snooze.png",
-                "name": "IMG_SNOOZE",
-                "type": "png"
-            },
-            {
-                "file": "images/UpAction.png",
-                "name": "IMG_UPACTION",
-                "type": "png"
-            },
-            {
-                "file": "images/Up.png",
-                "name": "IMG_UP",
-                "type": "png"
-            },
-            {
-                "file": "images/Standby.png",
-                "name": "IMG_STANDBY",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/Down-Sel.png",
                 "name": "IMAGE_DOWN_SEL",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/Up-Sel.png",
                 "name": "IMAGE_UP_SEL",
-                "type": "png"
+                "type": "bitmap"
+            },
+            {
+                "file": "images/NextAction.png",
+                "name": "IMG_NEXTACTION",
+                "targetPlatforms": null,
+                "type": "bitmap"
+            },
+            {
+                "file": "images/DownAction2.png",
+                "name": "IMAGE_DOWNACTION2",
+                "type": "bitmap"
+            },
+            {
+                "file": "images/Snooze.png",
+                "name": "IMG_SNOOZE",
+                "type": "bitmap"
+            },
+            {
+                "file": "images/UpAction.png",
+                "name": "IMG_UPACTION",
+                "type": "bitmap"
+            },
+            {
+                "file": "images/Up.png",
+                "name": "IMG_UP",
+                "type": "bitmap"
+            },
+            {
+                "file": "images/Standby.png",
+                "memoryFormat": "Smallest",
+                "name": "IMG_STANDBY",
+                "spaceOptimization": "memory",
+                "targetPlatforms": null,
+                "type": "bitmap"
             },
             {
                 "file": "images/DownAction.png",
                 "name": "IMG_DOWNACTION",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/UpAction2.png",
                 "name": "IMAGE_UPACTION2",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/Down.png",
                 "name": "IMG_DOWN",
-                "type": "png"
-            },
-            {
-                "file": "images/AppIcon.png",
-                "menuIcon": true,
-                "name": "IMG_APPICON",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/Right-Sel.png",
                 "name": "IMAGE_RIGHT_SEL",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/Settings.png",
+                "memoryFormat": "Smallest",
                 "name": "IMG_SETTINGS",
-                "type": "png"
+                "spaceOptimization": "memory",
+                "targetPlatforms": null,
+                "type": "bitmap"
             },
             {
                 "file": "images/Right-Unsel.png",
                 "name": "IMAGE_RIGHT_UNSEL",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/OKAction.png",
                 "name": "IMG_OKACTION",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/Down-Unsel.png",
                 "name": "IMAGE_DOWN_UNSEL",
-                "type": "png"
+                "type": "bitmap"
             }
         ]
     },
@@ -109,7 +116,7 @@
         "chalk"
     ],
     "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
-    "versionLabel": "2.7",
+    "versionLabel": "2.8",
     "watchapp": {
         "watchface": false
     }

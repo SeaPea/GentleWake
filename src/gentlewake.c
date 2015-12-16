@@ -28,31 +28,31 @@ static alarm s_alarms[7];
 static char s_info[45];
 static WakeupId s_wakeup_id = 0;
 static bool s_snoozing = false;
-static int s_snooze_count = 0;
+static uint8_t s_snooze_count = 0;
 static bool s_alarm_active = false;
 static bool s_monitoring = false;
 static time_t s_last_reset_day = 0;
 static time_t s_skip_until = 0;
-static int s_vibe_count = 0;
+static uint16_t s_vibe_count = 0;
 static uint64_t s_last_easylight = 0;
 static bool s_accel_service_sub = false;
-static int s_next_alarm = -1;
+static int8_t s_next_alarm = -1;
 static bool s_light_shown = false;
-static int s_last_x = 0;
-static int s_last_y = 0;
-static int s_last_z = 0;
+static int16_t s_last_x = 0;
+static int16_t s_last_y = 0;
+static int16_t s_last_z = 0;
 static int s_movement = 0;
 static bool s_loaded = false;
 static bool s_dst_check_started = false;
 
 // Vibrate alarm paterns - 2nd dimension: [next vibe delay (sec), vibe segment index, vibe segment length]
-static int vibe_patterns_orig[18][3] = {{3, 0, 1}, {3, 0, 1}, {4, 1, 3}, {4, 1, 3}, {4, 2, 5}, {4, 2, 5}, 
+static uint8_t vibe_patterns_orig[18][3] = {{3, 0, 1}, {3, 0, 1}, {4, 1, 3}, {4, 1, 3}, {4, 2, 5}, {4, 2, 5}, 
                                    {3, 3, 1}, {3, 3, 1}, {4, 4, 3}, {4, 4, 3}, {5, 5, 5}, {5, 5, 5}, 
                                    {3, 6, 1}, {3, 6, 1}, {4, 7, 3}, {4, 7, 3}, {5, 8, 5}, {5, 8, 5}};
 static uint32_t vibe_segments_orig[9][5] = {{150, 0, 0, 0, 0}, {150, 500, 150, 0, 0}, {150, 500, 150, 500, 150},
                                               {300, 0, 0, 0, 0}, {300, 500, 300, 0, 0}, {300, 500, 300, 500, 300},
                                               {600, 0, 0, 0, 0}, {600, 500, 600, 0, 0}, {600, 500, 600, 500, 600}};
-static int vibe_patterns_strong[24][3] = {{2, 0, 1}, {2, 0, 1}, {3, 1, 3}, {3, 1, 3}, {3, 2, 5}, {3, 2, 5}, 
+static uint8_t vibe_patterns_strong[24][3] = {{2, 0, 1}, {2, 0, 1}, {3, 1, 3}, {3, 1, 3}, {3, 2, 5}, {3, 2, 5}, 
                                    {2, 3, 1}, {2, 3, 1}, {3, 4, 3}, {3, 4, 3}, {4, 5, 5}, {4, 5, 5}, 
                                    {2, 6, 1}, {2, 6, 1}, {3, 7, 3}, {3, 7, 3}, {4, 8, 5}, {4, 8, 5}, 
                                    {2, 8, 5}, {2, 8, 5}, {3, 8, 5}, {3, 8, 5}, {4, 8, 5}, {4, 8, 5}};
@@ -90,11 +90,11 @@ enum Settings_en {
 // Calculate which daily alarm (if any) will be next
 // (Takes into account if the alarm for today was reset like when Smart Alarm is active and turned off
 //  before the alarm time)
-static int get_next_alarm() {
+static int8_t get_next_alarm() {
   struct tm *t;
   time_t utc;
   time_t next_date;
-  int next;
+  int8_t next;
   
   // If the one-time alarm is enabled, that must be the next alarm
   if (s_settings.one_time_alarm.enabled) return NEXT_ALARM_ONETIME;
@@ -104,9 +104,9 @@ static int get_next_alarm() {
   t = localtime(&utc);
   
   // Save localtime details as the t struct gets stomped on by clock_to_timestamp
-  int wday = t->tm_wday;
-  int hour = t->tm_hour;
-  int min = t->tm_min;
+  uint8_t wday = t->tm_wday;
+  uint8_t hour = t->tm_hour;
+  uint8_t min = t->tm_min;
   
   // Get the 'skip until' time in UTC  
   time_t skip_utc = s_skip_until - get_UTC_offset(t);
@@ -157,7 +157,7 @@ static time_t calc_skipnext() {
 }
 
 // Gets a timestamp from the alarm index
-static time_t alarm_to_timestamp(int alarm) {
+static time_t alarm_to_timestamp(int8_t alarm) {
   struct tm *t;
   time_t curr_time;
   time_t alarm_time = 0;
@@ -191,9 +191,9 @@ static time_t alarm_to_timestamp(int alarm) {
     
     // Then get a time struct in the local timezone
     struct tm *alarm_t = localtime(&skip_utc);
-    int next_alarm = 0;
+    int8_t next_alarm = 0;
     // Then find the next alarm on or after the skip date
-    for (int d = 0; d < 7; d++) {
+    for (int8_t d = 0; d < 7; d++) {
       next_alarm = (alarm_t->tm_wday + d) % 7;
       if (s_alarms[next_alarm].enabled) {
         // Get the wakeup time in UTC
@@ -227,7 +227,7 @@ static time_t alarm_to_timestamp(int alarm) {
 }
 
 // Generates the text to show what alarm is next
-static void gen_info_str(int next_alarm) {
+static void gen_info_str(int8_t next_alarm) {
   
   char day_str[9];
   char time_str[8];
@@ -273,8 +273,8 @@ static void gen_info_str(int next_alarm) {
     
     if (time_to < (10 * 60 * 60)) {
       // Add 'In X hrs, Y mins' text
-      int hours = time_to / (3600);
-      int mins = (time_to % (3600)) / 60;
+      uint8_t hours = time_to / (3600);
+      uint8_t mins = (time_to % (3600)) / 60;
       if (hours == 0) {
         if (mins == 0)
           strcpy(timeto_str, "\nIn <1 minute");
@@ -297,8 +297,8 @@ static void gen_info_str(int next_alarm) {
 }
 
 // Updates the displayed alarm time (and returns the next alarm day value)
-static int update_alarm_display() {
-  int next_alarm = get_next_alarm();
+static int8_t update_alarm_display() {
+  int8_t next_alarm = get_next_alarm();
   gen_info_str(next_alarm);
   update_info(s_info);
   return next_alarm;
@@ -307,9 +307,9 @@ static int update_alarm_display() {
 // Timer handler that sets the wakeup time after a short delay
 // (allows UI to refresh beforehand since this sometimes takes a second or 2 for some reason)
 static void set_wakeup_delayed(void *data) {
-  int try_count = 0;
-  int diff = 0;
-  int next_alarm = s_next_alarm;
+  uint8_t try_count = 0;
+  int8_t diff = 0;
+  int8_t next_alarm = s_next_alarm;
   
   // Clear any previous wakeup time
   if (s_wakeup_id != 0) {
@@ -324,7 +324,7 @@ static void set_wakeup_delayed(void *data) {
       // if snoozing set a wakeup for the snooze period
       // (or even if the alarm is active set a snooze wakeup in case something happens during the alarm)
       
-      int snooze_period = 0;
+      uint16_t snooze_period = 0;
       
       if (s_settings.dynamic_snooze && s_snooze_count > 0) {
         // Shrink snooze time based on snooze count (down to a min. of 3 minutes)
@@ -381,7 +381,7 @@ static void set_wakeup_delayed(void *data) {
       // then adjust it to be 5 seconds in the future
       if (alarm_time < curr_time) alarm_time = curr_time + 5;
       
-      int wakeup_reason = (s_settings.smart_alarm && !s_monitoring) ? WAKEUP_REASON_MONITOR : WAKEUP_REASON_ALARM;
+      uint8_t wakeup_reason = (s_settings.smart_alarm && !s_monitoring) ? WAKEUP_REASON_MONITOR : WAKEUP_REASON_ALARM;
       
       // Schedule the wakeup
       s_wakeup_id = wakeup_schedule(alarm_time, wakeup_reason, true);
@@ -469,7 +469,7 @@ static void set_wakeup_delayed(void *data) {
 
 // Sets an app wakeup for the specified alarm day
 // (next_alarm == -1 means no alarms, next_alarm == -2 means snooze wakeup)
-static void set_wakeup(int next_alarm) {
+static void set_wakeup(int8_t next_alarm) {
   s_next_alarm = next_alarm;
   // Delay actually setting the wakeup so the UI can update since it takes a second or 2 sometimes
   app_timer_register(250, set_wakeup_delayed, NULL);
@@ -482,7 +482,7 @@ static void set_snoozing(bool snoozing) {
 }
 
 // Updates snooze count and saves it in case of an exit
-static void set_snoozecount(int snooze_count) {
+static void set_snoozecount(uint8_t snooze_count) {
   s_snooze_count = snooze_count;
   persist_write_int(SNOOZECOUNT_KEY, s_snooze_count);
 }
@@ -513,7 +513,7 @@ static void set_onetime_enabled(bool enabled) {
 
 // Turns off an active alarm or cancels a snooze and sets wakeup for next alarm
 static void reset_alarm() {
-  int next;
+  int8_t next;
   
   s_alarm_active = false;
   set_snoozing(false);
@@ -557,8 +557,8 @@ static void vibe_alarm() {
   if (s_alarm_active && ! s_snoozing) {
     // If still active and not snoozing
     
-    int pattern_length = 0;
-    int (*vibe_patterns)[3];
+    uint8_t pattern_length = 0;
+    uint8_t (*vibe_patterns)[3];
     uint32_t (*vibe_segments)[5];
     
     switch (s_settings.vibe_pattern) {
@@ -647,7 +647,7 @@ static void settings_update() {
   }
   
   // Update next alarm info
-  int next_alarm = update_alarm_display();
+  int8_t next_alarm = update_alarm_display();
   
   // Set next wakeup in case alarms were changed
   if (s_loaded) set_wakeup(next_alarm);
@@ -694,7 +694,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
       // Reset one-time alarm
       if (s_settings.one_time_alarm.enabled) set_onetime_enabled(false);
       
-      int next_alarm = update_alarm_display();
+      int8_t next_alarm = update_alarm_display();
       // Redo wakeup
       set_wakeup(s_alarms_on ? next_alarm : NEXT_ALARM_NONE);
     }
@@ -710,7 +710,7 @@ static void update_skip(time_t skip_until) {
   if (skip_until > 0 && s_settings.one_time_alarm.enabled) set_onetime_enabled(false);
   
   // Update alarm display
-  int next_alarm = update_alarm_display();
+  int8_t next_alarm = update_alarm_display();
   // Update wakeup
   set_wakeup(next_alarm);
 }
@@ -803,7 +803,7 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
   if (s_alarm_active || s_snoozing || s_monitoring) {
     if (s_alarm_active || s_snoozing) {
       if (s_settings.easy_light) {
-        for (int i = 0; i < (int)num_samples; i++) {
+        for (uint32_t i = 0; i < num_samples; i++) {
           // If watch screen is held vertically (as if looking at the time) while alarm is on or snoozing,
           // turn the light on for a few seconds
           if (!data[i].did_vibrate) {
@@ -836,7 +836,7 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
       
       // Get the accel difference for each direction for the last sample period and as positive values
       // and add to the movement counter
-      for (int i = 0; i < (int)num_samples; i++) {
+      for (uint32_t i = 0; i < num_samples; i++) {
         if (!data[i].did_vibrate) {
           diff = s_last_x - data[i].x;
           s_movement += (diff > 0 ? diff : -diff);
@@ -931,72 +931,54 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   }
 }
 
+// Gets int from persist if exists, else returns default value
+static int persist_int(const uint32_t persist_key, int default_val) {
+  if (persist_exists(persist_key))
+    return persist_read_int(persist_key);
+  else
+    return default_val;
+}
+
+// Gets bool from persist if exists, else returns default value
+static bool persist_bool(const uint32_t persist_key, bool default_val) {
+  if (persist_exists(persist_key))
+    return persist_read_bool(persist_key);
+  else
+    return default_val;
+}
+
 static void init(void) {
   
   // Load all the settings
   if (persist_exists(ALARMS_KEY))
     persist_read_data(ALARMS_KEY, s_alarms, sizeof(s_alarms));
-  if (persist_exists(SNOOZEDELAY_KEY))
-    s_settings.snooze_delay = persist_read_int(SNOOZEDELAY_KEY);
-  else
-    s_settings.snooze_delay = 9;
-  if (persist_exists(DYNAMICSNOOZE_KEY))
-    s_settings.dynamic_snooze = persist_read_bool(DYNAMICSNOOZE_KEY);
-  else
-    s_settings.dynamic_snooze = true;
-  if (persist_exists(EASYLIGHT_KEY))
-    s_settings.easy_light = persist_read_bool(EASYLIGHT_KEY);
-  else
-    s_settings.easy_light = true;
-  if (persist_exists(SMARTALARM_KEY))
-    s_settings.smart_alarm = persist_read_bool(SMARTALARM_KEY);
-  else
-    s_settings.smart_alarm = true;
-  if (persist_exists(MONITORPERIOD_KEY))
-    s_settings.monitor_period = persist_read_int(MONITORPERIOD_KEY);
-  else
-    s_settings.monitor_period = 30;
-  if (persist_exists(MOVESENSITIVITY_KEY))
-    s_settings.sensitivity = persist_read_int(MOVESENSITIVITY_KEY);
-  else
-    s_settings.sensitivity = MS_MEDIUM;
-  if (persist_exists(ALARMSON_KEY))
-    s_alarms_on = persist_read_bool(ALARMSON_KEY);
-  if (persist_exists(WAKEUPID_KEY))
-    s_wakeup_id = persist_read_int(WAKEUPID_KEY);
-  if (persist_exists(LASTRESETDATE_KEY))
-    persist_read_data(LASTRESETDATE_KEY, &s_last_reset_day, sizeof(s_last_reset_day));
-  if (persist_exists(SNOOZECOUNT_KEY))
-    s_snooze_count = persist_read_int(SNOOZECOUNT_KEY);
-  if (persist_exists(SNOOZINGON_KEY))
-    s_snoozing = persist_read_bool(SNOOZINGON_KEY);
-  if (persist_exists(MONITORINGON_KEY))
-    s_monitoring = persist_read_bool(MONITORINGON_KEY);
+  s_settings.snooze_delay = persist_int(SNOOZEDELAY_KEY, 9);
+  s_settings.dynamic_snooze = persist_bool(DYNAMICSNOOZE_KEY, true);
+  s_settings.easy_light = persist_bool(EASYLIGHT_KEY, true);
+  s_settings.smart_alarm = persist_bool(SMARTALARM_KEY, true);
+  s_settings.monitor_period = persist_int(MONITORPERIOD_KEY, 30);
+  s_settings.sensitivity = persist_int(MOVESENSITIVITY_KEY, MS_MEDIUM);
+  s_alarms_on = persist_bool(ALARMSON_KEY, true);
+  s_wakeup_id = persist_read_int(WAKEUPID_KEY);
+  persist_read_data(LASTRESETDATE_KEY, &s_last_reset_day, sizeof(s_last_reset_day));
+  s_snooze_count = persist_int(SNOOZECOUNT_KEY, 0);
+  s_snoozing = persist_read_bool(SNOOZINGON_KEY);
+  s_monitoring = persist_read_bool(MONITORINGON_KEY);
   if (persist_exists(SKIPNEXT_KEY)) {
     bool skip_next = persist_read_bool(SKIPNEXT_KEY);
     persist_delete(SKIPNEXT_KEY);
     if (skip_next) set_skipuntil(calc_skipnext());
   }
-  if (persist_exists(SKIPUNTIL_KEY))
-    persist_read_data(SKIPUNTIL_KEY, &s_skip_until, sizeof(s_skip_until));
-  if (persist_exists(DSTCHECKDAY_KEY))
-    s_settings.dst_check_day = persist_read_int(DSTCHECKDAY_KEY);
-  else
-    s_settings.dst_check_day = SUNDAY;
+  persist_read_data(SKIPUNTIL_KEY, &s_skip_until, sizeof(s_skip_until));
+  s_settings.dst_check_day = persist_int(DSTCHECKDAY_KEY, SUNDAY);
   if (persist_exists(DSTCHECKHOUR_KEY)) {
     s_settings.dst_check_hour = persist_read_int(DSTCHECKHOUR_KEY);
     if (s_settings.dst_check_hour < 3 || s_settings.dst_check_hour > 9)
       s_settings.dst_check_hour = 4;
   } else
     s_settings.dst_check_hour = 4;
-  if (persist_exists(KONAMICODEON_KEY))
-    s_settings.konamic_code_on = persist_read_bool(KONAMICODEON_KEY);
-  else
-    s_settings.konamic_code_on = false;
-  if (persist_exists(VIBEPATTERN_KEY))
-    s_settings.vibe_pattern = persist_read_int(VIBEPATTERN_KEY);
-  else
-    s_settings.vibe_pattern = VP_Gentle;
+  s_settings.konamic_code_on = persist_read_bool(KONAMICODEON_KEY);
+  s_settings.vibe_pattern = persist_int(VIBEPATTERN_KEY, VP_Gentle);
   if (persist_exists(ONETIMEALARM_KEY))
     persist_read_data(ONETIMEALARM_KEY, &(s_settings.one_time_alarm), sizeof(s_settings.one_time_alarm));
   else {

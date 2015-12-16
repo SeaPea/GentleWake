@@ -1,5 +1,7 @@
+#pragma once
+#include <pebble.h>
 
-typedef void (*AlarmTimeCallBack)(int day, int hour, int minute);
+typedef void (*AlarmTimeCallBack)(int8_t day, uint8_t hour, uint8_t minute);
 
-void show_alarmtime(int day, int hour, int minute, AlarmTimeCallBack set_event);
+void show_alarmtime(int8_t day, uint8_t hour, uint8_t minute, AlarmTimeCallBack set_event);
 void hide_alarmtime(void);

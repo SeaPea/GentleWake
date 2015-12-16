@@ -1,7 +1,7 @@
 #include <pebble.h>
 #include "common.h"
 
-void dayname(int day, char *daystr, int slen) {
+void dayname(uint8_t day, char *daystr, int slen) {
   switch (day) {
     case 0:
       strncpy(daystr, "Sunday", slen);
@@ -29,8 +29,9 @@ void dayname(int day, char *daystr, int slen) {
   }
 }
 
-void daynameshort(int day, char *daystr, int slen) {
-  switch (day) {
+void daynameshort(uint8_t day, char *daystr, int slen) {
+  dayname(day, daystr, (slen < 3 ? slen : 3));
+  /*switch (day) {
     case 0:
       strncpy(daystr, "Sun", slen);
       break;
@@ -54,10 +55,10 @@ void daynameshort(int day, char *daystr, int slen) {
       break;
     default:
       strncpy(daystr, "", slen);
-  }
+  }*/
 }
 
-void gen_time_str(int hour, int min, char *timestr, int slen) {
+void gen_time_str(uint8_t hour, uint8_t min, char *timestr, int slen) {
   if (clock_is_24h_style())
       snprintf(timestr, slen, "%d:%.2d", hour, min);
     else

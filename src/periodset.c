@@ -6,7 +6,7 @@
 
 static PeriodSetCallBack s_set_event;
 
-#ifdef PBL_PLATFORM_APLITE 
+#ifdef PBL_SDK_2 
 // Have to use the built-in NumberWindow for Aplite to reduce the binary size
 // (would use it for Basalt with more memory, except it is broken in OS 3)
 static NumberWindow *s_num_window = NULL;
@@ -53,12 +53,17 @@ void unload_periodset(void) {
   }
 }
 #else
-// Create our own NumberWindow for Pebbles with more memory as the 
+// Create our own NumberWindow for Pebbles as the 
 // built-in NumberWindow is broken in OS 3
-static int s_minutes = 0;
-static int s_min_minutes = 0;
-static int s_max_minutes = 60;
-static char s_minute_str[3];
+
+#define MAX_TITLE 30
+#define LEN_PERIOD 3
+
+static char *s_title;
+static uint8_t s_minutes = 0;
+static uint8_t s_min_minutes = 0;
+static uint8_t s_max_minutes = 60;
+static char s_minute_str[LEN_PERIOD];
 
 static Window *s_window;
 static GFont s_res_bitham_30_black;
@@ -67,12 +72,35 @@ static GFont s_res_gothic_24_bold;
 static GBitmap *s_res_img_upaction;
 static GBitmap *s_res_img_okaction;
 static GBitmap *s_res_img_downaction;
-static TextLayer *minutes_layer;
-static TextLayer *unit_layer;
-static TextLayer *title_layer;
+//static TextLayer *minutes_layer;
+//static TextLayer *unit_layer;
+//static TextLayer *title_layer;
 static ActionBarLayer *action_layer;
+static Layer *s_period_layer;
+
+static void draw_period(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer); 
+  
+  graphics_context_set_text_color(ctx, GColorWhite);
+  // Draw title
+  graphics_draw_text(ctx, s_title, s_res_gothic_24_bold, 
+                     GRect(2+PBL_IF_ROUND_ELSE(ACTION_BAR_WIDTH/2, 0), (bounds.size.h/2)-70, bounds.size.w-ACTION_BAR_WIDTH-4, 49), 
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  
+  // Draw period
+  graphics_draw_text(ctx, s_minute_str, s_res_bitham_30_black, 
+                     GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-21, (bounds.size.h/2)-19, 42, 36), 
+                     GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  
+  // Draw units
+  graphics_draw_text(ctx, "Minutes", s_res_gothic_28_bold, 
+                     GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-40, (bounds.size.h/2)+15, 80, 31), 
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+}
 
 static void initialise_ui(void) {
+  s_title = malloc(MAX_TITLE);
+  
   s_window = window_create();
   IF_2(window_set_fullscreen(s_window, true));
   Layer *root_layer = window_get_root_layer(s_window);
@@ -86,8 +114,13 @@ static void initialise_ui(void) {
   s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_UPACTION);
   s_res_img_okaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_OKACTION);
   s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_DOWNACTION);
+  
+  s_period_layer = layer_create(bounds);
+  layer_set_update_proc(s_period_layer, draw_period); 
+  layer_add_child(root_layer, s_period_layer);
+  
   // minutes_layer
-  minutes_layer = text_layer_create(GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-21, (bounds.size.h/2)-19, 42, 36));
+  /*minutes_layer = text_layer_create(GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-21, (bounds.size.h/2)-19, 42, 36));
   text_layer_set_background_color(minutes_layer, GColorClear);
   text_layer_set_text_color(minutes_layer, GColorWhite);
   text_layer_set_text(minutes_layer, "10");
@@ -111,7 +144,7 @@ static void initialise_ui(void) {
   text_layer_set_text(title_layer, "Snooze Delay");
   text_layer_set_text_alignment(title_layer, GTextAlignmentCenter);
   text_layer_set_font(title_layer, s_res_gothic_24_bold);
-  layer_add_child(root_layer, (Layer *)title_layer);
+  layer_add_child(root_layer, (Layer *)title_layer);*/
   
   // action_layer
   action_layer = action_bar_layer_create();
@@ -129,13 +162,16 @@ static void initialise_ui(void) {
 
 static void destroy_ui(void) {
   window_destroy(s_window);
-  text_layer_destroy(minutes_layer);
-  text_layer_destroy(unit_layer);
-  text_layer_destroy(title_layer);
+  layer_destroy(s_period_layer);
+  //text_layer_destroy(minutes_layer);
+  //text_layer_destroy(unit_layer);
+  //text_layer_destroy(title_layer);
   action_bar_layer_destroy(action_layer);
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_okaction);
   gbitmap_destroy(s_res_img_downaction);
+  
+  free(s_title);
 }
 
 static void handle_window_unload(Window* window) {
@@ -143,8 +179,9 @@ static void handle_window_unload(Window* window) {
 }
 
 static void update_minutes() {
-  snprintf(s_minute_str, sizeof(s_minute_str), "%d", s_minutes);
-  text_layer_set_text(minutes_layer, s_minute_str);
+  snprintf(s_minute_str, LEN_PERIOD, "%d", s_minutes);
+  layer_mark_dirty(s_period_layer);
+  //text_layer_set_text(minutes_layer, s_minute_str);
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -174,14 +211,15 @@ static void click_config_provider(void *context) {
 
 // Show the time period screen with a title, current # of mininutes, min and max limits, 
 // and a call back function that is called when the select button is pressed
-void show_periodset(char *title, int minutes, int min_minutes, int max_minutes, PeriodSetCallBack set_event) {
+void show_periodset(char *title, uint8_t minutes, uint8_t min_minutes, uint8_t max_minutes, PeriodSetCallBack set_event) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
   });
   
   // Set the title (assumes char passed in is set statically)
-  text_layer_set_text(title_layer, title);
+  //text_layer_set_text(title_layer, title);
+  strncpy(s_title, title, MAX_TITLE);
   
   // Store all the parameters passed in and show the current value
   s_minutes = minutes;

@@ -1,7 +1,7 @@
 #pragma once
 #include <pebble.h>
   
-#define VERSION "2.7"
+#define VERSION "2.8"
   
 #ifdef PBL_COLOR
 #define IF_COLOR(statement)   (statement)
@@ -62,7 +62,7 @@ struct Settings_st {
   bool konamic_code_on;
   VibePatterns vibe_pattern;
   alarm one_time_alarm;
-};
+} __attribute__((__packed__));
 
 typedef enum AlarmDay {
   A_SUNDAY = 0,
@@ -74,9 +74,9 @@ typedef enum AlarmDay {
   A_SATURDAY = 6
 } AlarmDay;
 
-void dayname(int day, char *daystr, int slen);
-void daynameshort(int day, char *daystr, int slen);
-void gen_time_str(int hour, int min, char *timestr, int slen);
+void dayname(uint8_t day, char *daystr, int slen);
+void daynameshort(uint8_t day, char *daystr, int slen);
+void gen_time_str(uint8_t hour, uint8_t min, char *timestr, int slen);
 void gen_alarm_str(alarm *alarmtime, char *alarmstr, int slen);
 time_t strip_time(time_t timestamp);
 int64_t day_diff(time_t date1, time_t date2);

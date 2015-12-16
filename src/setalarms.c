@@ -52,7 +52,7 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
 
 // Indicates if alarm times or on/off are mixed between days
 static bool is_alarms_mixed() {
-  for (int i = 0; i <= 5; i++) {
+  for (uint8_t i = 0; i <= 5; i++) {
     if (s_alarms[i].enabled != s_alarms[i+1].enabled ||
         (s_alarms[i+1].enabled && 
          (s_alarms[i].hour != s_alarms[i+1].hour ||
@@ -115,7 +115,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
 }
 
 // Call back from AlarmTime screen to set alarm
-static void alarm_set(int day, int hour, int minute) {
+static void alarm_set(int8_t day, uint8_t hour, uint8_t minute) {
   switch (day) {
     case -2:
       // Set One-Time alarm
@@ -125,7 +125,7 @@ static void alarm_set(int day, int hour, int minute) {
       break;
     case -1:
       // Set all days the same
-      for (int i = 0; i <= 6; i++) {
+      for (uint8_t i = 0; i <= 6; i++) {
         s_alarms[i].enabled = true;
         s_alarms[i].hour = hour;
         s_alarms[i].minute = minute;
@@ -190,10 +190,10 @@ static void menu_longselect_callback(MenuLayer *menu_layer, MenuIndex *cell_inde
           break;
         case 1:
           if (is_alarms_mixed()) {
-            for (int i = 0; i <= 6; i++)
+            for (uint8_t i = 0; i <= 6; i++)
               s_alarms[i].enabled = false;
           } else {
-            for (int i = 0; i <= 6; i++) {
+            for (uint8_t i = 0; i <= 6; i++) {
               if (s_alarms[i].enabled) {
                 s_alarms[i].enabled = false;
               } else {
