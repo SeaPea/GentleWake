@@ -1,6 +1,7 @@
 #include "setalarms.h"
 #include "alarmtime.h"
 #include "common.h"
+#include "commonwin.h"
 #include <pebble.h>
 
 // Screen to set alarm times
@@ -15,18 +16,16 @@ static Window *s_window;
 static MenuLayer *alarms_layer;
 
 static void initialise_ui(void) {
-  s_window = window_create();
-  IF_2(window_set_fullscreen(s_window, true));
-  Layer *root_layer = window_get_root_layer(s_window);
-  GRect bounds = layer_get_bounds(root_layer); 
-  IF_2(bounds.size.h += 16);
+  GRect bounds;
+  Layer *root_layer = NULL;
+  s_window = window_create_fullscreen(&root_layer, &bounds);
   
   // alarms_layer
   alarms_layer = menu_layer_create(bounds);
   menu_layer_set_click_config_onto_window(alarms_layer, s_window);
-  IF_3(menu_layer_set_normal_colors(alarms_layer, GColorBlack, GColorWhite)); 
-  IF_3(menu_layer_set_highlight_colors(alarms_layer, GColorBlueMoon, GColorWhite));
-  layer_add_child(root_layer, (Layer *)alarms_layer);
+  IF_COLOR(menu_layer_set_normal_colors(alarms_layer, GColorBlack, GColorWhite)); 
+  IF_COLOR(menu_layer_set_highlight_colors(alarms_layer, GColorBlueMoon, GColorWhite));
+  layer_add_child(root_layer, menu_layer_get_layer(alarms_layer));
 }
 
 static void destroy_ui(void) {

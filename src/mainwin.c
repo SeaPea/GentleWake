@@ -1,5 +1,6 @@
 #include "mainwin.h"
 #include "common.h"
+#include "commonwin.h"
 
 enum onoff_modes {
   MODE_OFF,
@@ -21,7 +22,6 @@ static GBitmap *s_res_img_settings;
 static GFont s_res_roboto_bold_subset_49;
 static GFont s_res_gothic_18_bold;
 static ActionBarLayer *action_layer;
-//static TextLayer *clockbg_layer;
 static Layer *clock_layer;
 static Layer *onoff_layer;
 static Layer *info_layer;
@@ -95,12 +95,9 @@ static void draw_info(Layer *layer, GContext *ctx) {
 
 static void initialise_ui(void) {
   
-  s_window = window_create();
-  IF_2(window_set_fullscreen(s_window, true));
-  Layer *root_layer = window_get_root_layer(s_window);
-  GRect bounds = layer_get_bounds(root_layer); 
-  IF_2(bounds.size.h += 16);
-  window_set_background_color(s_window, GColorBlack);
+  Layer *root_layer = NULL;
+  GRect bounds; 
+  s_window = window_create_fullscreen(&root_layer, &bounds);
   
   s_res_img_standby = gbitmap_create_with_resource(RESOURCE_ID_IMG_STANDBY);
   s_res_img_settings = gbitmap_create_with_resource(RESOURCE_ID_IMG_SETTINGS);
@@ -116,41 +113,22 @@ static void initialise_ui(void) {
   layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
   IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
   // Put Action Bar underneath other layers on rectangular Pebbles
-  layer_add_child(root_layer, (Layer *)action_layer);
+  layer_add_child(root_layer, action_bar_layer_get_layer(action_layer));
 #endif
-  /*
-#ifdef PBL_RECT
-  // clockbg_layer to make clock background black over action bar layer on rectangular Pebbles
-  clockbg_layer = text_layer_create(GRect(0, 60, 144, 50));
-  text_layer_set_background_color(clockbg_layer, GColorBlack);
-  text_layer_set_text_color(clockbg_layer, GColorClear);
-  text_layer_set_text(clockbg_layer, "    ");
-  layer_add_child(root_layer, (Layer *)clockbg_layer);
-#endif
-  */
   
   // clock_layer
-  /*clock_layer = text_layer_create(GRect(0 - PBL_IF_RECT_ELSE(0, ACTION_BAR_WIDTH/2), (bounds.size.h/2)-32-PBL_IF_ROUND_ELSE(2, 0), bounds.size.w, 65));
-  text_layer_set_background_color(clock_layer, GColorClear);
-  text_layer_set_text_color(clock_layer, GColorWhite);
-  text_layer_set_text(clock_layer, "23:55");
-  text_layer_set_text_alignment(clock_layer, GTextAlignmentCenter);
-  text_layer_set_font(clock_layer, s_res_roboto_bold_subset_49);*/
-  clock_layer = layer_create(GRect(0 - PBL_IF_RECT_ELSE(0, ACTION_BAR_WIDTH/2), (bounds.size.h/2)-32-PBL_IF_ROUND_ELSE(2, 0), bounds.size.w, 65));
-  layer_set_update_proc(clock_layer, draw_clock); 
-  layer_add_child(root_layer, (Layer *)clock_layer);
+  clock_layer = layer_create_with_proc(root_layer, draw_clock,
+                                       GRect(0 - PBL_IF_RECT_ELSE(0, ACTION_BAR_WIDTH/2), (bounds.size.h/2)-32-PBL_IF_ROUND_ELSE(2, 0), bounds.size.w, 65));
   
   // onoff_layer
-  onoff_layer = layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)-82, 119, 56),
+  onoff_layer = layer_create_with_proc(root_layer, draw_onoff,
+                                      PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)-82, 119, 56),
                                                    GRect(-10, (bounds.size.h/2)-82, bounds.size.w+11, 56)));
-  layer_set_update_proc(onoff_layer, draw_onoff); 
-  layer_add_child(root_layer, (Layer *)onoff_layer);
   
   // info_layer
-  info_layer = layer_create(PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)+26, 119, 56),
+  info_layer = layer_create_with_proc(root_layer, draw_info,
+                                     PBL_IF_RECT_ELSE(GRect(2, (bounds.size.h/2)+26, 119, 56),
                                                  GRect(-10, (bounds.size.h/2)+24, bounds.size.w+11, 56)));
-  layer_set_update_proc(info_layer, draw_info); 
-  layer_add_child(root_layer, info_layer);
   
 #ifdef PBL_ROUND
   // Put Action Bar on top for Pebble Round

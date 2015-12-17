@@ -91,8 +91,6 @@ enum Settings_en {
 // (Takes into account if the alarm for today was reset like when Smart Alarm is active and turned off
 //  before the alarm time)
 static int8_t get_next_alarm() {
-  struct tm *t;
-  time_t utc;
   time_t next_date;
   int8_t next;
   
@@ -100,8 +98,8 @@ static int8_t get_next_alarm() {
   if (s_settings.one_time_alarm.enabled) return NEXT_ALARM_ONETIME;
   
   // Get current time
-  utc = time(NULL);
-  t = localtime(&utc);
+  time_t utc = time(NULL);
+  struct tm *t = localtime(&utc);
   
   // Save localtime details as the t struct gets stomped on by clock_to_timestamp
   uint8_t wday = t->tm_wday;
@@ -158,13 +156,11 @@ static time_t calc_skipnext() {
 
 // Gets a timestamp from the alarm index
 static time_t alarm_to_timestamp(int8_t alarm) {
-  struct tm *t;
-  time_t curr_time;
   time_t alarm_time = 0;
       
   // Get current time
-  curr_time = time(NULL);
-  t = localtime(&curr_time);
+  time_t curr_time = time(NULL);
+  struct tm *t = localtime(&curr_time);
   
   WeekDay alarmday;
   
@@ -363,12 +359,10 @@ static void set_wakeup_delayed(void *data) {
       }
     } else {
       // Set wakeup for next alarm
-      struct tm *t;
-      time_t curr_time;
       
       // Get current time
-      curr_time = time(NULL);
-      t = localtime(&curr_time);
+      time_t curr_time = time(NULL);
+      struct tm *t = localtime(&curr_time);
       
       // Get the time for the next alarm
       time_t alarm_time = alarm_to_timestamp(next_alarm);

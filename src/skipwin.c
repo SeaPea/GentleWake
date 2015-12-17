@@ -1,6 +1,7 @@
 #include <pebble.h>
 #include "skipwin.h"
 #include "common.h"
+#include "commonwin.h"
 
 #define LEN_DATE 12
 
@@ -39,71 +40,27 @@ static void draw_info(Layer *layer, GContext *ctx) {
 static void initialise_ui(void) {
   s_date = malloc(LEN_DATE);
   
-  s_window = window_create();
-  IF_2(window_set_fullscreen(s_window, true));
-  Layer *root_layer = window_get_root_layer(s_window);
-  GRect bounds = layer_get_bounds(root_layer); 
-  window_set_background_color(s_window, GColorBlack);
-  IF_2(bounds.size.h += 16);
+  GRect bounds;
+  Layer *root_layer = NULL;
+  s_window = window_create_fullscreen(&root_layer, &bounds);
   
-  s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_UPACTION);
+  s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
   s_res_img_okaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_OKACTION);
-  s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_DOWNACTION);
+  s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DOWNACTION2);
   s_res_gothic_24 = fonts_get_system_font(FONT_KEY_GOTHIC_24);
   s_res_gothic_28 = fonts_get_system_font(FONT_KEY_GOTHIC_28);
   // s_actionbarlayer
-  s_actionbarlayer = action_bar_layer_create();
-  action_bar_layer_add_to_window(s_actionbarlayer, s_window);
-  action_bar_layer_set_background_color(s_actionbarlayer, GColorWhite);
-  action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_UP, s_res_img_upaction);
-  action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_SELECT, s_res_img_okaction);
-  action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_DOWN, s_res_img_downaction);
-#ifdef PBL_RECT
-  layer_set_frame(action_bar_layer_get_layer(s_actionbarlayer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, bounds.size.h)));
-#endif
-  layer_add_child(root_layer, (Layer *)s_actionbarlayer);
+  s_actionbarlayer = actionbar_create(s_window, root_layer, &bounds, s_res_img_upaction, s_res_img_okaction, s_res_img_downaction);
   
   // info layer
-  s_info_layer = layer_create(GRect(0, 0, bounds.size.w-ACTION_BAR_WIDTH, bounds.size.h));
-  layer_set_update_proc(s_info_layer, draw_info); 
-  layer_add_child(root_layer, s_info_layer);
-  
-  // s_textlayer_info
-  /*s_textlayer_info = text_layer_create(GRect(2, (bounds.size.h/2)-55, bounds.size.w-ACTION_BAR_WIDTH-4, 32));
-  text_layer_set_background_color(s_textlayer_info, GColorClear);
-  text_layer_set_text_color(s_textlayer_info, GColorWhite);
-  text_layer_set_text(s_textlayer_info, "Skip Until:");
-  text_layer_set_text_alignment(s_textlayer_info, GTextAlignmentCenter);
-  text_layer_set_font(s_textlayer_info, s_res_gothic_24);
-  layer_add_child(root_layer, (Layer *)s_textlayer_info);
-  
-  // s_textlayer_date
-  s_textlayer_date = text_layer_create(GRect(2, (bounds.size.h/2)-18, bounds.size.w-ACTION_BAR_WIDTH-4, 32));
-  text_layer_set_background_color(s_textlayer_date, GColorClear);
-  text_layer_set_text_color(s_textlayer_date, GColorWhite);
-  text_layer_set_text(s_textlayer_date, "Thu, Feb 22");
-  text_layer_set_text_alignment(s_textlayer_date, GTextAlignmentCenter);
-  text_layer_set_font(s_textlayer_date, s_res_gothic_28);
-  layer_add_child(root_layer, (Layer *)s_textlayer_date);
-  
-  // s_textlayer_status
-  s_textlayer_status = text_layer_create(GRect(7, (bounds.size.h/2)+18, bounds.size.w-ACTION_BAR_WIDTH-14, 32));
-  text_layer_set_background_color(s_textlayer_status, GColorClear);
-  text_layer_set_text_color(s_textlayer_status, GColorWhite);
-  text_layer_set_text(s_textlayer_status, "(No skipping)");
-  text_layer_set_text_alignment(s_textlayer_status, GTextAlignmentCenter);
-  text_layer_set_font(s_textlayer_status, s_res_gothic_24);
-  layer_add_child(root_layer, (Layer *)s_textlayer_status);*/
+  s_info_layer = layer_create_with_proc(root_layer, draw_info,
+                                        GRect(0, 0, bounds.size.w-ACTION_BAR_WIDTH, bounds.size.h));
 }
 
 static void destroy_ui(void) {
   window_destroy(s_window);
   action_bar_layer_destroy(s_actionbarlayer);
   layer_destroy(s_info_layer);
-  //text_layer_destroy(s_textlayer_info);
-  //text_layer_destroy(s_textlayer_date);
-  //text_layer_destroy(s_textlayer_status);
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_okaction);
   gbitmap_destroy(s_res_img_downaction);
@@ -120,12 +77,9 @@ static time_t get_today() {
 }
 
 static void update_date_display() {
-  struct tm *t;
   time_t skip_utc = s_skip_until - get_UTC_offset(NULL);
-  t = localtime(&skip_utc);
+  struct tm *t = localtime(&skip_utc);
   strftime(s_date, LEN_DATE, "%a, %b %d", t);
-  //text_layer_set_text(s_textlayer_date, s_date);
-  //layer_set_hidden(text_layer_get_layer(s_textlayer_status), s_skip_until > get_today());
   s_show_noskip = (s_skip_until <= get_today());
   layer_mark_dirty(s_info_layer);
 }

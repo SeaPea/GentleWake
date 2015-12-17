@@ -21,7 +21,7 @@ static void selected_handler(struct NumberWindow *number_window, void *context) 
 
 // Show the time period screen with a title, current # of mininutes, min and max limits, 
 // and a call back function that is called when the select button is pressed
-void show_periodset(char *title, int minutes, int min_minutes, int max_minutes, PeriodSetCallBack set_event) {
+void show_periodset(char *title, uint8_t minutes, uint8_t min_minutes, uint8_t max_minutes, PeriodSetCallBack set_event) {
   if (s_num_window == NULL) {
     s_num_window = number_window_create(title, (NumberWindowCallbacks) {
       .selected = selected_handler
@@ -56,6 +56,8 @@ void unload_periodset(void) {
 // Create our own NumberWindow for Pebbles as the 
 // built-in NumberWindow is broken in OS 3
 
+#include "commonwin.h"
+
 #define MAX_TITLE 30
 #define LEN_PERIOD 3
 
@@ -72,9 +74,6 @@ static GFont s_res_gothic_24_bold;
 static GBitmap *s_res_img_upaction;
 static GBitmap *s_res_img_okaction;
 static GBitmap *s_res_img_downaction;
-//static TextLayer *minutes_layer;
-//static TextLayer *unit_layer;
-//static TextLayer *title_layer;
 static ActionBarLayer *action_layer;
 static Layer *s_period_layer;
 
@@ -101,76 +100,31 @@ static void draw_period(Layer *layer, GContext *ctx) {
 static void initialise_ui(void) {
   s_title = malloc(MAX_TITLE);
   
-  s_window = window_create();
-  IF_2(window_set_fullscreen(s_window, true));
-  Layer *root_layer = window_get_root_layer(s_window);
-  GRect bounds = layer_get_bounds(root_layer); 
-  window_set_background_color(s_window, GColorBlack);
-  IF_2(bounds.size.h += 16);
+  GRect bounds;
+  Layer *root_layer = NULL;
+  s_window = window_create_fullscreen(&root_layer, &bounds);
   
   s_res_bitham_30_black = fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
   s_res_gothic_28_bold = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
   s_res_gothic_24_bold = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
-  s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_UPACTION);
+  s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
   s_res_img_okaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_OKACTION);
-  s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_DOWNACTION);
+  s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DOWNACTION2);
   
-  s_period_layer = layer_create(bounds);
-  layer_set_update_proc(s_period_layer, draw_period); 
-  layer_add_child(root_layer, s_period_layer);
-  
-  // minutes_layer
-  /*minutes_layer = text_layer_create(GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-21, (bounds.size.h/2)-19, 42, 36));
-  text_layer_set_background_color(minutes_layer, GColorClear);
-  text_layer_set_text_color(minutes_layer, GColorWhite);
-  text_layer_set_text(minutes_layer, "10");
-  text_layer_set_text_alignment(minutes_layer, GTextAlignmentCenter);
-  text_layer_set_font(minutes_layer, s_res_bitham_30_black);
-  layer_add_child(root_layer, (Layer *)minutes_layer);
-  
-  // unit_layer
-  unit_layer = text_layer_create(GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-40, (bounds.size.h/2)+15, 80, 31));
-  text_layer_set_background_color(unit_layer, GColorClear);
-  text_layer_set_text_color(unit_layer, GColorWhite);
-  text_layer_set_text(unit_layer, "Minutes");
-  text_layer_set_text_alignment(unit_layer, GTextAlignmentCenter);
-  text_layer_set_font(unit_layer, s_res_gothic_28_bold);
-  layer_add_child(root_layer, (Layer *)unit_layer);
-  
-  // title_layer
-  title_layer = text_layer_create(GRect(2+PBL_IF_ROUND_ELSE(ACTION_BAR_WIDTH/2, 0), (bounds.size.h/2)-70, bounds.size.w-ACTION_BAR_WIDTH-4, 49));
-  text_layer_set_background_color(title_layer, GColorClear);
-  text_layer_set_text_color(title_layer, GColorWhite);
-  text_layer_set_text(title_layer, "Snooze Delay");
-  text_layer_set_text_alignment(title_layer, GTextAlignmentCenter);
-  text_layer_set_font(title_layer, s_res_gothic_24_bold);
-  layer_add_child(root_layer, (Layer *)title_layer);*/
+  s_period_layer = layer_create_with_proc(root_layer, draw_period, bounds);
   
   // action_layer
-  action_layer = action_bar_layer_create();
-  action_bar_layer_add_to_window(action_layer, s_window);
-  action_bar_layer_set_background_color(action_layer, GColorWhite);
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_upaction);
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_SELECT, s_res_img_okaction);
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_downaction);
-#ifdef PBL_RECT
-  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
-#endif
-  layer_add_child(root_layer, (Layer *)action_layer);
+  action_layer = actionbar_create(s_window, root_layer, &bounds, s_res_img_upaction, s_res_img_okaction, s_res_img_downaction);
 }
 
 static void destroy_ui(void) {
   window_destroy(s_window);
   layer_destroy(s_period_layer);
-  //text_layer_destroy(minutes_layer);
-  //text_layer_destroy(unit_layer);
-  //text_layer_destroy(title_layer);
   action_bar_layer_destroy(action_layer);
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_okaction);
   gbitmap_destroy(s_res_img_downaction);
-  
+
   free(s_title);
 }
 
@@ -181,7 +135,6 @@ static void handle_window_unload(Window* window) {
 static void update_minutes() {
   snprintf(s_minute_str, LEN_PERIOD, "%d", s_minutes);
   layer_mark_dirty(s_period_layer);
-  //text_layer_set_text(minutes_layer, s_minute_str);
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -214,14 +167,11 @@ static void click_config_provider(void *context) {
 void show_periodset(char *title, uint8_t minutes, uint8_t min_minutes, uint8_t max_minutes, PeriodSetCallBack set_event) {
   initialise_ui();
   window_set_window_handlers(s_window, (WindowHandlers) {
-    .unload = handle_window_unload,
+    .unload = handle_window_unload
   });
   
-  // Set the title (assumes char passed in is set statically)
-  //text_layer_set_text(title_layer, title);
-  strncpy(s_title, title, MAX_TITLE);
-  
   // Store all the parameters passed in and show the current value
+  strncpy(s_title, title, MAX_TITLE);
   s_minutes = minutes;
   s_min_minutes = min_minutes;
   s_max_minutes = max_minutes;

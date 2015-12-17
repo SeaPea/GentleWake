@@ -10,49 +10,62 @@
         "media": [
             {
                 "file": "images/AppIcon.png",
+                "memoryFormat": "Smallest",
                 "menuIcon": true,
                 "name": "IMG_APPICON",
+                "spaceOptimization": "memory",
+                "targetPlatforms": null,
                 "type": "bitmap"
             },
             {
                 "file": "images/Up-Unsel.png",
                 "name": "IMAGE_UP_UNSEL",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
                 "type": "bitmap"
             },
             {
                 "file": "images/Down-Sel.png",
                 "name": "IMAGE_DOWN_SEL",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
                 "type": "bitmap"
             },
             {
                 "file": "images/Up-Sel.png",
                 "name": "IMAGE_UP_SEL",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
                 "type": "bitmap"
             },
             {
                 "file": "images/NextAction.png",
+                "memoryFormat": "Smallest",
                 "name": "IMG_NEXTACTION",
+                "spaceOptimization": "memory",
                 "targetPlatforms": null,
                 "type": "bitmap"
             },
             {
                 "file": "images/DownAction2.png",
+                "memoryFormat": "Smallest",
                 "name": "IMAGE_DOWNACTION2",
+                "spaceOptimization": "memory",
+                "targetPlatforms": null,
                 "type": "bitmap"
             },
             {
                 "file": "images/Snooze.png",
+                "memoryFormat": "Smallest",
                 "name": "IMG_SNOOZE",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/UpAction.png",
-                "name": "IMG_UPACTION",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/Up.png",
-                "name": "IMG_UP",
+                "spaceOptimization": "memory",
+                "targetPlatforms": null,
                 "type": "bitmap"
             },
             {
@@ -64,23 +77,20 @@
                 "type": "bitmap"
             },
             {
-                "file": "images/DownAction.png",
-                "name": "IMG_DOWNACTION",
-                "type": "bitmap"
-            },
-            {
                 "file": "images/UpAction2.png",
+                "memoryFormat": "Smallest",
                 "name": "IMAGE_UPACTION2",
-                "type": "bitmap"
-            },
-            {
-                "file": "images/Down.png",
-                "name": "IMG_DOWN",
+                "spaceOptimization": "memory",
+                "targetPlatforms": null,
                 "type": "bitmap"
             },
             {
                 "file": "images/Right-Sel.png",
                 "name": "IMAGE_RIGHT_SEL",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
                 "type": "bitmap"
             },
             {
@@ -94,16 +104,27 @@
             {
                 "file": "images/Right-Unsel.png",
                 "name": "IMAGE_RIGHT_UNSEL",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
                 "type": "bitmap"
             },
             {
                 "file": "images/OKAction.png",
+                "memoryFormat": "Smallest",
                 "name": "IMG_OKACTION",
+                "spaceOptimization": "memory",
+                "targetPlatforms": null,
                 "type": "bitmap"
             },
             {
                 "file": "images/Down-Unsel.png",
                 "name": "IMAGE_DOWN_UNSEL",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
                 "type": "bitmap"
             }
         ]

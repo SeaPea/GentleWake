@@ -30,32 +30,8 @@ void dayname(uint8_t day, char *daystr, int slen) {
 }
 
 void daynameshort(uint8_t day, char *daystr, int slen) {
-  dayname(day, daystr, (slen < 3 ? slen : 3));
-  /*switch (day) {
-    case 0:
-      strncpy(daystr, "Sun", slen);
-      break;
-    case 1:
-      strncpy(daystr, "Mon", slen);
-      break;
-    case 2:
-      strncpy(daystr, "Tue", slen);
-      break;
-    case 3:
-      strncpy(daystr, "Wed", slen);
-      break;
-    case 4:
-      strncpy(daystr, "Thu", slen);
-      break;
-    case 5:
-      strncpy(daystr, "Fri", slen);
-      break;
-    case 6:
-      strncpy(daystr, "Sat", slen);
-      break;
-    default:
-      strncpy(daystr, "", slen);
-  }*/
+  dayname(day, daystr, (slen < 4 ? slen : 3));
+  daystr[(slen < 4 ? slen-1 : 3)] = '\0';
 }
 
 void gen_time_str(uint8_t hour, uint8_t min, char *timestr, int slen) {
@@ -93,8 +69,7 @@ time_t get_UTC_offset(struct tm *t) {
   return 0; 
 #else
   if (t == NULL) {
-    time_t temp;
-    temp = time(NULL);
+    time_t temp = time(NULL);
     t = localtime(&temp);
   }
   

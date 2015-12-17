@@ -1,5 +1,6 @@
 #include <pebble.h>
 #include "common.h"
+#include "commonwin.h"
 #include "konamicode.h"
 
 // Screen for displaying and receiving a random sequence of button presses like
@@ -36,7 +37,7 @@ static void gen_konami_sequence() {
   // Generate the first code
   s_konami_sequence[0] = rand() % KC_Max;
   
-  for (int i = 1; i < 5; i++) {
+  for (uint8_t i = 1; i < 5; i++) {
     // Generate the next code that is always different from the previous
     s_konami_sequence[i] = rand() % (KC_Max - 1);
     if (s_konami_sequence[i] >= s_konami_sequence[i-1]) s_konami_sequence[i]++;
@@ -44,7 +45,18 @@ static void gen_konami_sequence() {
 }
 
 // Gets the matching bitmap for a button code and whether it should show as selected (successfully pressed)
-static GBitmap* get_code_img(enum KonamiCodes code, bool selected) {
+static GBitmap* get_code_img(enum KonamiCodes code, bool selected, GContext *ctx) {
+#ifdef PBL_PLATFORM_APLITE
+  graphics_context_set_compositing_mode(ctx, (selected ? GCompOpAssignInverted : GCompOpAssign));
+  if (code == KC_Up)
+    return gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
+  else if (code == KC_Right)
+    return gbitmap_create_with_resource(RESOURCE_ID_IMG_NEXTACTION);
+  else if (code == KC_Down)
+    return gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DOWNACTION2);
+  else
+    return NULL;
+#else
   switch (code) {
     case KC_Up:
       if (selected)
@@ -68,6 +80,7 @@ static GBitmap* get_code_img(enum KonamiCodes code, bool selected) {
       return NULL;
       break;
   }
+#endif
 }
 
 // Closes the window after a period of inactivity
@@ -111,7 +124,7 @@ static void draw_code(Layer *layer, GContext *ctx) {
   
   // Draw codes
   for (uint8_t i = 0; i < 5; i++) {
-    GBitmap *img = get_code_img(s_konami_sequence[i], (i < s_current_code));
+    GBitmap *img = get_code_img(s_konami_sequence[i], (i < s_current_code), ctx);
     if (img != NULL) {
       graphics_draw_bitmap_in_rect(ctx, img, GRect(7 + (i * 23), 91, 18, 18));
       gbitmap_destroy(img);
@@ -121,12 +134,9 @@ static void draw_code(Layer *layer, GContext *ctx) {
 
 // Initialize all the window UI elements
 static void initialise_ui(void) {
-  s_window = window_create();
-  IF_2(window_set_fullscreen(s_window, true));
-  Layer *root_layer = window_get_root_layer(s_window);
-  GRect bounds = layer_get_bounds(root_layer);  
-  IF_2(bounds.size.h += 16);
-  window_set_background_color(s_window, GColorBlack);
+  GRect bounds;
+  Layer *root_layer = NULL;
+  s_window = window_create_fullscreen(&root_layer, &bounds);
   
   s_res_img_nextaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_NEXTACTION);
   s_res_image_upaction2 = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
@@ -135,17 +145,7 @@ static void initialise_ui(void) {
   s_res_gothic_14 = fonts_get_system_font(FONT_KEY_GOTHIC_14);
   
   // s_actionbarlayer
-  s_actionbarlayer = action_bar_layer_create();
-  action_bar_layer_add_to_window(s_actionbarlayer, s_window);
-  action_bar_layer_set_background_color(s_actionbarlayer, GColorBlack);
-  action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_UP, s_res_image_upaction2);
-  action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_SELECT, s_res_img_nextaction);
-  action_bar_layer_set_icon(s_actionbarlayer, BUTTON_ID_DOWN, s_res_image_downaction2);
-#ifdef PBL_RECT
-  layer_set_frame(action_bar_layer_get_layer(s_actionbarlayer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(s_actionbarlayer), GRect(-5, 0, 30, bounds.size.h)));
-#endif
-  layer_add_child(root_layer, (Layer *)s_actionbarlayer);
+  s_actionbarlayer = actionbar_create(s_window, root_layer, &bounds, s_res_image_upaction2, s_res_img_nextaction, s_res_image_downaction2);
   
   // s_textlayer_backbutton
   s_textlayer_backbutton = text_layer_create(GRect(1, 4, bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH+1, 0), 45));
@@ -163,9 +163,8 @@ static void initialise_ui(void) {
   gen_konami_sequence();
   
   // s_layer_code
-  s_layer_code = layer_create(GRect(2+PBL_IF_ROUND_ELSE(25, 0), 50, 120, bounds.size.h-56));
-  layer_add_child(root_layer, s_layer_code);
-  layer_set_update_proc(s_layer_code, draw_code);
+  s_layer_code = layer_create_with_proc(root_layer, draw_code, 
+                                       GRect(2+PBL_IF_ROUND_ELSE(25, 0), 50, 120, bounds.size.h-56));
 }
 
 // Free memory from all the UI elements

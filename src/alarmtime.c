@@ -1,5 +1,6 @@
 #include "alarmtime.h"
 #include "common.h"
+#include "commonwin.h"
 #include <pebble.h>
 
 // Screen for setting alarm times
@@ -65,34 +66,20 @@ static void draw_time(Layer *layer, GContext *ctx) {
 static void initialise_ui(void) {
   s_alarmtitle = malloc(MAX_TITLE);
   
-  s_window = window_create();
-  IF_2(window_set_fullscreen(s_window, true));
-  Layer *root_layer = window_get_root_layer(s_window);
-  GRect bounds = layer_get_bounds(root_layer); 
-  IF_2(bounds.size.h += 16);
-  window_set_background_color(s_window, GColorBlack);
+  GRect bounds;
+  Layer *root_layer = NULL;
+  s_window = window_create_fullscreen(&root_layer, &bounds);
   
-  s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_UPACTION);
+  s_res_img_upaction = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
   s_res_img_nextaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_NEXTACTION);
-  s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMG_DOWNACTION);
+  s_res_img_downaction = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DOWNACTION2);
   s_res_gothic_18_bold = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
   s_res_bitham_30_black = fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
   // action_layer
-  action_layer = action_bar_layer_create();
-  action_bar_layer_add_to_window(action_layer, s_window);
-  action_bar_layer_set_background_color(action_layer, GColorWhite);
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_upaction);
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_SELECT, s_res_img_nextaction);
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_downaction);
-#ifdef PBL_RECT
-  layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
-#endif
-  layer_add_child(root_layer, (Layer *)action_layer);
+  action_layer = actionbar_create(s_window, root_layer, &bounds, s_res_img_upaction, s_res_img_nextaction, s_res_img_downaction);
   
-  time_layer = layer_create(GRect(0, 0, bounds.size.w-ACTION_BAR_WIDTH, bounds.size.h));
-  layer_set_update_proc(time_layer, draw_time); 
-  layer_add_child(root_layer, time_layer);
+  time_layer = layer_create_with_proc(root_layer, draw_time, 
+                                     GRect(0, 0, bounds.size.w-ACTION_BAR_WIDTH, bounds.size.h));
 }
 
 static void destroy_ui(void) {
@@ -193,19 +180,21 @@ void show_alarmtime(int8_t day, uint8_t hour, uint8_t minute, AlarmTimeCallBack 
   // Store pointer to callback for when done
   s_set_event = set_event;
   
-  char daystr[10];
+  char *daystr;
   
   // Generate alarm screen time
   switch (day) {
     case -2:
-      strcpy(s_alarmtitle, "One-Time Alarm");
+      strncpy(s_alarmtitle, "One-Time Alarm", MAX_TITLE);
       break;
     case -1:
-      strcpy(s_alarmtitle, "Alarm Every Day");
+      strncpy(s_alarmtitle, "Alarm Every Day", MAX_TITLE);
       break;
     default:
-      dayname(day, daystr, sizeof(daystr));
+      daystr = malloc(10);
+      dayname(day, daystr, 10);
       snprintf(s_alarmtitle, MAX_TITLE, "%s Alarm", daystr);
+      free(daystr);
   }
   
   update_alarmtime();

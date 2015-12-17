@@ -3,6 +3,7 @@
 #include "setalarms.h"
 #include "periodset.h"
 #include "common.h"
+#include "commonwin.h"
 
 // Top-Level Settings Screen
   
@@ -39,18 +40,16 @@ static Window *s_window;
 static MenuLayer *settings_layer;
 
 static void initialise_ui(void) {
-  s_window = window_create();
-  IF_2(window_set_fullscreen(s_window, true));
-  Layer *root_layer = window_get_root_layer(s_window);
-  GRect bounds = layer_get_bounds(root_layer); 
-  IF_2(bounds.size.h += 16);
+  GRect bounds;
+  Layer *root_layer = NULL;
+  s_window = window_create_fullscreen(&root_layer, &bounds);
   s_header_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
   
   // settings_layer
   settings_layer = menu_layer_create(bounds);
   menu_layer_set_click_config_onto_window(settings_layer, s_window);
-  IF_3(menu_layer_set_normal_colors(settings_layer, GColorBlack, GColorWhite)); 
-  IF_3(menu_layer_set_highlight_colors(settings_layer, GColorBlueMoon, GColorWhite));
+  IF_COLOR(menu_layer_set_normal_colors(settings_layer, GColorBlack, GColorWhite)); 
+  IF_COLOR(menu_layer_set_highlight_colors(settings_layer, GColorBlueMoon, GColorWhite));
   layer_add_child(root_layer, (Layer *)settings_layer);
 }
 
