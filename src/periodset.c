@@ -58,10 +58,9 @@ void unload_periodset(void) {
 
 #include "commonwin.h"
 
-#define MAX_TITLE 30
 #define LEN_PERIOD 3
 
-static char *s_title;
+static char s_title[30];
 static uint8_t s_minutes = 0;
 static uint8_t s_min_minutes = 0;
 static uint8_t s_max_minutes = 60;
@@ -88,7 +87,7 @@ static void draw_period(Layer *layer, GContext *ctx) {
   
   // Draw period
   graphics_draw_text(ctx, s_minute_str, s_res_bitham_30_black, 
-                     GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-21, (bounds.size.h/2)-19, 42, 36), 
+                     GRect(((bounds.size.w-PBL_IF_RECT_ELSE(ACTION_BAR_WIDTH,0))/2)-30, (bounds.size.h/2)-19, 60, 36), 
                      GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
   
   // Draw units
@@ -98,7 +97,6 @@ static void draw_period(Layer *layer, GContext *ctx) {
 }
 
 static void initialise_ui(void) {
-  s_title = malloc(MAX_TITLE);
   
   GRect bounds;
   Layer *root_layer = NULL;
@@ -124,8 +122,6 @@ static void destroy_ui(void) {
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_okaction);
   gbitmap_destroy(s_res_img_downaction);
-
-  free(s_title);
 }
 
 static void handle_window_unload(Window* window) {
@@ -171,7 +167,7 @@ void show_periodset(char *title, uint8_t minutes, uint8_t min_minutes, uint8_t m
   });
   
   // Store all the parameters passed in and show the current value
-  strncpy(s_title, title, MAX_TITLE);
+  strncpy(s_title, title, sizeof(s_title));
   s_minutes = minutes;
   s_min_minutes = min_minutes;
   s_max_minutes = max_minutes;

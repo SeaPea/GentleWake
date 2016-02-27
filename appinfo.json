@@ -4,6 +4,7 @@
         ""
     ],
     "companyName": "SeaPea Software",
+    "enableMultiJS": false,
     "longName": "Gentle Wake",
     "projectType": "native",
     "resources": {
@@ -137,7 +138,7 @@
         "chalk"
     ],
     "uuid": "701c1038-920b-49db-90ff-1a6f2c90226e",
-    "versionLabel": "2.8",
+    "versionLabel": "2.9",
     "watchapp": {
         "watchface": false
     }

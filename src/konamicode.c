@@ -126,7 +126,7 @@ static void draw_code(Layer *layer, GContext *ctx) {
   for (uint8_t i = 0; i < 5; i++) {
     GBitmap *img = get_code_img(s_konami_sequence[i], (i < s_current_code), ctx);
     if (img != NULL) {
-      graphics_draw_bitmap_in_rect(ctx, img, GRect(7 + (i * 23), 91, 18, 18));
+      graphics_draw_bitmap_in_rect(ctx, img, GRect(5 + (i * 23), 91, 18, 18));
       gbitmap_destroy(img);
     }
   }

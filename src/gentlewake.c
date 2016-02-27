@@ -94,6 +94,8 @@ static int8_t get_next_alarm() {
   time_t next_date;
   int8_t next;
   
+  if (!s_alarms_on) return NEXT_ALARM_NONE;
+  
   // If the one-time alarm is enabled, that must be the next alarm
   if (s_settings.one_time_alarm.enabled) return NEXT_ALARM_ONETIME;
   
@@ -206,10 +208,15 @@ static time_t alarm_to_timestamp(int8_t alarm) {
   } else {
     if (alarm == t->tm_wday && (s_alarms[alarm].hour > t->tm_hour || 
                                      (s_alarms[alarm].hour == t->tm_hour && 
-                                      s_alarms[alarm].minute > t->tm_min)))
-      // If next alarm is today, use the TODAY enum
-      alarmday = TODAY;
-    else
+                                      s_alarms[alarm].minute > t->tm_min))) {
+      if (strip_time(curr_time) == s_last_reset_day)
+        // If the alarm day is the same day as today, but the alarm was also reset today, the 
+        // alarm must be for 1 week from now
+        alarmday = ad2wd(alarm);
+      else
+        // If next alarm is today, use the TODAY enum
+        alarmday = TODAY;
+    } else
       // Else convert the day number to the WeekDay enum
       alarmday = ad2wd(alarm);
   
@@ -255,9 +262,16 @@ static void gen_info_str(int8_t next_alarm) {
       
       if (next_alarm == t->tm_wday && (s_alarms[next_alarm].hour > t->tm_hour ||
                                        (s_alarms[next_alarm].hour == t->tm_hour &&
-                                        s_alarms[next_alarm].minute > t->tm_min)))
-        strncpy(day_str, "Today", sizeof(day_str));
-      else if (next_alarm == ((t->tm_wday+1)%7))
+                                        s_alarms[next_alarm].minute > t->tm_min))) {
+        if (strip_time(temp) == s_last_reset_day) {
+          // If the alarm day is the same day as today, but the alarm was also reset today, the 
+          // alarm must be for 1 week from now
+          char day_name[4];
+          daynameshort(next_alarm, day_name, sizeof(day_name));
+          snprintf(day_str, sizeof(day_str), "Next %s", day_name);
+        } else
+          strncpy(day_str, "Today", sizeof(day_str));
+      } else if (next_alarm == ((t->tm_wday+1)%7))
         strncpy(day_str, clock_is_24h_style() ? "Tomorrow" : "Tmrw", sizeof(day_str));
       else
         daynameshort(next_alarm, day_str, sizeof(day_str));

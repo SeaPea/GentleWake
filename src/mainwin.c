@@ -111,7 +111,7 @@ static void initialise_ui(void) {
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_settings);
 #ifdef PBL_RECT
   layer_set_frame(action_bar_layer_get_layer(action_layer), GRect(bounds.size.w-20, 0, 20, bounds.size.h));
-  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-5, 0, 30, bounds.size.h)));
+  IF_3(layer_set_bounds(action_bar_layer_get_layer(action_layer), GRect(-6, 0, 31, bounds.size.h)));
   // Put Action Bar underneath other layers on rectangular Pebbles
   layer_add_child(root_layer, action_bar_layer_get_layer(action_layer));
 #endif

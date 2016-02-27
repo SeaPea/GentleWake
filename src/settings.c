@@ -1,7 +1,9 @@
 #include <pebble.h>
 #include "settings.h"
 #include "setalarms.h"
+#ifndef PBL_PLATFORM_APLITE
 #include "periodset.h"
+#endif
 #include "common.h"
 #include "commonwin.h"
 
@@ -56,7 +58,9 @@ static void initialise_ui(void) {
 static void destroy_ui(void) {
   window_destroy(s_window);
   menu_layer_destroy(settings_layer);
+#ifndef PBL_PLATFORM_APLITE
   unload_periodset();
+#endif
   if (s_settings_closed != NULL) s_settings_closed();
 }
 
@@ -308,10 +312,12 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   }
 }
 
+#ifndef PBL_PLATFORM_APLITE
 static void snoozedelay_set(uint8_t minutes) {
   s_settings->snooze_delay = minutes;
   layer_mark_dirty(menu_layer_get_layer(settings_layer));
 }
+#endif
 
 static void monitorperiod_set(uint8_t minutes) {
   s_settings->monitor_period = minutes;
@@ -324,7 +330,9 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case MENU_ALARM_SECTION:
       switch (cell_index->row) {
         case MENU_ALARMS_ITEM:
+#ifndef PBL_PLATFORM_APLITE
           unload_periodset();
+#endif
           show_setalarms(s_alarms, &(s_settings->one_time_alarm));
           break;
       }
@@ -333,7 +341,14 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
     case MENU_MISC_SECTION:
       switch (cell_index->row) {
         case MENU_SNOOZEDELAY_ITEM:
+#ifdef PBL_PLATFORM_APLITE
+          // Save memory on Aplite watches by just incrementing in the menu
+          s_settings->snooze_delay++;
+          if (s_settings->snooze_delay > 20) s_settings->snooze_delay = 3;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
+#else
           show_periodset("Snooze Delay", s_settings->snooze_delay, 3, 20, snoozedelay_set);
+#endif
           break;
         case MENU_DYNAMICSNOOZE_ITEM:
           s_settings->dynamic_snooze = !s_settings->dynamic_snooze;
@@ -361,7 +376,13 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
           layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case MENU_SMARTPERIOD_ITEM:
+#ifdef PBL_PLATFORM_APLITE
+          s_settings->monitor_period += 5;
+          if (s_settings->monitor_period > 60) s_settings->monitor_period = 5;
+          layer_mark_dirty(menu_layer_get_layer(settings_layer));
+#else
           show_periodset("Smart Alarm Monitor Period", s_settings->monitor_period, 5, 60, monitorperiod_set);
+#endif
           break;
         case MENU_MOVESENSITIVITY_ITEM:
           s_settings->sensitivity = (s_settings->sensitivity == MS_HIGH ? MS_LOW : s_settings->sensitivity + 1);
