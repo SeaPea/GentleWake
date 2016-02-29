@@ -13,6 +13,8 @@ static bool s_alarms_on;
 static char s_info[45];
 static char s_onoff_text[40];
 static enum onoff_modes s_onoff_mode;
+static uint8_t s_autoclose_timeout = 0;
+static AppTimer *s_autoclose_timer = NULL;
 
 static GBitmap *s_res_img_snooze;
 
@@ -139,7 +141,6 @@ static void initialise_ui(void) {
 static void destroy_ui(void) {
   window_destroy(s_window);
   action_bar_layer_destroy(action_layer);
-  //text_layer_destroy(clockbg_layer);
   layer_destroy(clock_layer);
   layer_destroy(onoff_layer);
   layer_destroy(info_layer);
@@ -147,14 +148,60 @@ static void destroy_ui(void) {
   gbitmap_destroy(s_res_img_settings);
 }
 
+static void handle_window_unload(Window* window) {
+  destroy_ui();
+  gbitmap_destroy(s_res_img_snooze);
+}
+
+// Handles timer event when app has been idle for X minutes and auto-closes app
+static void autoclose_handler(void *data) {
+  if (s_autoclose_timer != NULL) {
+    s_autoclose_timer = NULL;
+    if (s_autoclose_timeout != 0 && window_stack_get_top_window() == s_window) {
+      // If autoclose is still enabled and the main window is on top, then exit the app
+      window_stack_pop_all(false);
+    }
+  } 
+}
+
+// Stops any active auto-close timer
+static void stop_autoclose_timer() {
+  if (s_autoclose_timer != NULL) {
+    app_timer_cancel(s_autoclose_timer);
+    s_autoclose_timer = NULL;
+  }
+}
+
+// Starts or restarts any acive auto-close timer if auto-close is still enabled
+static void restart_autoclose_timer() {
+  if (s_autoclose_timeout == 0 || s_onoff_mode == MODE_ACTIVE)
+    // Stop auto-close if it has been disabled or an alarm is active
+    stop_autoclose_timer();
+  else {
+    // Start or restart auto-close timer (timeout is stored in minutes)
+    if (s_autoclose_timer == NULL)
+      s_autoclose_timer = app_timer_register(s_autoclose_timeout * 60 * 1000, autoclose_handler, NULL);
+    else
+      app_timer_reschedule(s_autoclose_timer, s_autoclose_timeout * 60 * 1000); 
+  }
+}
+
+static void handle_window_appear(Window* window) {
+  restart_autoclose_timer();
+}
+
+static void handle_window_disappear(Window* window) {
+  stop_autoclose_timer();
+}
+
 static void set_onoff_text(const char *onoff_text) {
   strncpy(s_onoff_text, onoff_text, sizeof(s_onoff_text));
   layer_mark_dirty(onoff_layer);
 }
 
+// Updates the clock time
 void update_clock() {
   clock_copy_time_string(current_time, sizeof(current_time));
-  //text_layer_set_text(clock_layer, current_time);
   layer_mark_dirty(clock_layer);
 }
 
@@ -162,6 +209,7 @@ void init_click_events(ClickConfigProvider click_config_provider) {
   window_set_click_config_provider(s_window, click_config_provider);
 }
 
+// Sets the alarms to show as Enabled or Disbaled
 void update_onoff(bool on) {
   s_alarms_on = on;
   if (on) {
@@ -173,16 +221,26 @@ void update_onoff(bool on) {
     set_onoff_text("Alarms DISABLED");
     layer_set_hidden(info_layer, true);
   }
+  restart_autoclose_timer();
 }
 
+// Updates the info at the bottom of the main window
 void update_info(char* text) {
   strncpy(s_info, text, sizeof(s_info));
   layer_mark_dirty(info_layer);
 }
 
+// Updates the timeout period for the auto-close time and restarts the timer if appropriate
+void update_autoclose_timeout(uint8_t timeout) {
+  s_autoclose_timeout = timeout;
+  restart_autoclose_timer();
+}
+
+// Updates the UI to show alarm as active or not
 void show_alarm_ui(bool on) {
   if (on) {
     s_onoff_mode = MODE_ACTIVE;
+    stop_autoclose_timer();
     set_onoff_text("WAKEY! WAKEY!");
     update_info("Click to snooze\n2 clicks to stop ");
     action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_snooze);
@@ -194,8 +252,10 @@ void show_alarm_ui(bool on) {
   }
 }
 
+// Update the main window to show that an active alarm is currently snoozed
 void show_snooze(time_t snooze_time) {
   s_onoff_mode = MODE_ACTIVE;
+  stop_autoclose_timer();
   set_onoff_text("SNOOZING");
   
   struct tm *t = localtime(&snooze_time);
@@ -211,8 +271,10 @@ void show_snooze(time_t snooze_time) {
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_snooze);
 }
 
+// Update the main window to show that the Smart Alarm is monitoring
 void show_monitoring(time_t alarm_time) {
   s_onoff_mode = MODE_ACTIVE;
+  stop_autoclose_timer();
   set_onoff_text("SMART ALARM\nACTIVE");
   
   struct tm *t = localtime(&alarm_time);
@@ -228,16 +290,15 @@ void show_monitoring(time_t alarm_time) {
   action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_snooze);
 }
 
-static void handle_window_unload(Window* window) {
-  destroy_ui();
-  gbitmap_destroy(s_res_img_snooze);
-}
-
-void show_mainwin(void) {
+// Show the main application window
+void show_mainwin(uint8_t autoclose_timeout) {
   initialise_ui();
   s_res_img_snooze = gbitmap_create_with_resource(RESOURCE_ID_IMG_SNOOZE);
+  s_autoclose_timeout = autoclose_timeout;
   window_set_window_handlers(s_window, (WindowHandlers) {
     .unload = handle_window_unload,
+    .appear = handle_window_appear,
+    .disappear = handle_window_disappear
   });
   
   update_clock();
@@ -245,6 +306,7 @@ void show_mainwin(void) {
   window_stack_push(s_window, true);
 }
 
+// Close the main application window
 void hide_mainwin(void) {
   window_stack_remove(s_window, true);
 }

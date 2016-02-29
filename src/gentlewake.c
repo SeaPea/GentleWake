@@ -84,7 +84,8 @@ enum Settings_en {
   SKIPUNTIL_KEY = 17,
   KONAMICODEON_KEY = 18,
   VIBEPATTERN_KEY = 19,
-  ONETIMEALARM_KEY = 20
+  ONETIMEALARM_KEY = 20,
+  AUTOCLOSETIMEOUT_KEY = 21
 };
 
 // Calculate which daily alarm (if any) will be next
@@ -639,6 +640,7 @@ static void save_settings_delayed(void *data) {
   persist_write_bool(KONAMICODEON_KEY, s_settings.konamic_code_on);
   persist_write_int(VIBEPATTERN_KEY, s_settings.vibe_pattern);
   persist_write_data(ONETIMEALARM_KEY, &(s_settings.one_time_alarm), sizeof(s_settings.one_time_alarm));
+  persist_write_int(AUTOCLOSETIMEOUT_KEY, s_settings.autoclose_timeout);
 }
 
 // Callback function to indicate when the settings have been closed
@@ -649,6 +651,8 @@ static void settings_update() {
     set_lastresetday(0);
     // Reset skip next too
     set_skipuntil(0);
+    // Update the main window auto-close timeout
+    update_autoclose_timeout(s_settings.autoclose_timeout);
     
     // Save settings after a delay to allow UI to update
     app_timer_register(500, save_settings_delayed, NULL);
@@ -994,9 +998,10 @@ static void init(void) {
     s_settings.one_time_alarm.hour = 7;
     s_settings.one_time_alarm.minute = 0;
   }
+  s_settings.autoclose_timeout = persist_int(AUTOCLOSETIMEOUT_KEY, 0);
   
   // Show the main screen and update the UI
-  show_mainwin();
+  show_mainwin(s_settings.autoclose_timeout);
   init_click_events(click_config_provider);
   update_onoff(s_alarms_on);
   settings_update();

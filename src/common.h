@@ -62,6 +62,7 @@ struct Settings_st {
   bool konamic_code_on;
   VibePatterns vibe_pattern;
   alarm one_time_alarm;
+  uint8_t autoclose_timeout;
 } __attribute__((__packed__));
 
 typedef enum AlarmDay {

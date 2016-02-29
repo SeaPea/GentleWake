@@ -11,7 +11,7 @@
   
 #define NUM_MENU_SECTIONS 5
 #define NUM_MENU_ALARM_ITEMS 1
-#define NUM_MENU_MISC_ITEMS 5
+#define NUM_MENU_MISC_ITEMS 6
 #define NUM_MENU_SMART_ITEMS 3
 #define NUM_MENU_DST_ITEMS 2
 #define NUM_MENU_ABOUT_ITEMS 1
@@ -26,6 +26,7 @@
 #define MENU_EASYLIGHT_ITEM 2
 #define MENU_KONAMICODE_ITEM 3
 #define MENU_VIBEPATTERN_ITEM 4
+#define MENU_AUTOCLOSE_ITEM 5
 #define MENU_SMARTALARM_ITEM 0
 #define MENU_SMARTPERIOD_ITEM 1
 #define MENU_MOVESENSITIVITY_ITEM 2
@@ -142,6 +143,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   char snooze_str[15];
   char monitor_str[15];
   char dst_check_hour_str[6];
+  char autoclose_str[17];
   
   switch (cell_index->section) {
     case MENU_ALARM_SECTION:
@@ -239,6 +241,21 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
               menu_cell_basic_draw(ctx, cell_layer, "Vibration Pattern", "???", NULL);
               break;
           }
+          break;
+        case MENU_AUTOCLOSE_ITEM:
+          // Show Auto-Close setting
+          switch (s_settings->autoclose_timeout) {
+            case 0:
+              strcpy(autoclose_str, "OFF");
+              break;
+            case 1:
+              strcpy(autoclose_str, "After 1 Minute");
+              break;
+            default:
+              snprintf(autoclose_str, sizeof(autoclose_str), "After %d Minutes", s_settings->autoclose_timeout);
+              break;
+          }
+          menu_cell_basic_draw(ctx, cell_layer, "Auto Close", autoclose_str, NULL);
           break;
       }
       break;
@@ -345,27 +362,24 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
           // Save memory on Aplite watches by just incrementing in the menu
           s_settings->snooze_delay++;
           if (s_settings->snooze_delay > 20) s_settings->snooze_delay = 3;
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
 #else
           show_periodset("Snooze Delay", s_settings->snooze_delay, 3, 20, snoozedelay_set);
 #endif
           break;
         case MENU_DYNAMICSNOOZE_ITEM:
           s_settings->dynamic_snooze = !s_settings->dynamic_snooze;
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case MENU_EASYLIGHT_ITEM:
           s_settings->easy_light = !s_settings->easy_light;
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case MENU_KONAMICODE_ITEM:
           s_settings->konamic_code_on = !s_settings->konamic_code_on;
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case MENU_VIBEPATTERN_ITEM:
           s_settings->vibe_pattern = (s_settings->vibe_pattern == VP_NSG2Snooze ? VP_Gentle : s_settings->vibe_pattern + 1);
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
+        case MENU_AUTOCLOSE_ITEM:
+          s_settings->autoclose_timeout = (s_settings->autoclose_timeout + 1) % 11;
       }
       break;
     
@@ -373,20 +387,17 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
       switch (cell_index->row) {
         case MENU_SMARTALARM_ITEM:
           s_settings->smart_alarm = !s_settings->smart_alarm;
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case MENU_SMARTPERIOD_ITEM:
 #ifdef PBL_PLATFORM_APLITE
           s_settings->monitor_period += 5;
           if (s_settings->monitor_period > 60) s_settings->monitor_period = 5;
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
 #else
           show_periodset("Smart Alarm Monitor Period", s_settings->monitor_period, 5, 60, monitorperiod_set);
 #endif
           break;
         case MENU_MOVESENSITIVITY_ITEM:
           s_settings->sensitivity = (s_settings->sensitivity == MS_HIGH ? MS_LOW : s_settings->sensitivity + 1);
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
       }
       break;
@@ -409,18 +420,16 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
               s_settings->dst_check_day = SUNDAY;
               break;
           }
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
         case MENU_DSTDAYHOUR_ITEM:
           // Cycle DST check hour between 3AM and 9AM
           s_settings->dst_check_hour++;
           if (s_settings->dst_check_hour > 9) s_settings->dst_check_hour = 3;
-          layer_mark_dirty(menu_layer_get_layer(settings_layer));
           break;
       }
       break;
   }
-
+  layer_mark_dirty(menu_layer_get_layer(settings_layer));
 }
 
 static void handle_window_unload(Window* window) {
