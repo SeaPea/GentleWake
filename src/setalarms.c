@@ -70,46 +70,43 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   char alarmtimestr[8];
   char alarmstr[30];
   
-  switch (cell_index->section) {
+  switch (cell_index->row) {
     case 0:
-    
-      switch (cell_index->row) {
-        case 0:
-          // Set One-Time alarm
-          gen_alarm_str(s_onetime, alarmtimestr, sizeof(alarmtimestr));
-          if (s_onetime->enabled)
-            snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
-          else
-            snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
-        
-          menu_cell_basic_draw(ctx, cell_layer, "One-Time Alarm", alarmstr, NULL);
-          break;
-        
-        case 1:
-          // Set alarm time for all days
-          if (is_alarms_mixed()) {
-            strncpy(alarmstr, "Mixed - Hold to turn off", sizeof(alarmstr));
-          } else {
-            gen_alarm_str(&s_alarms[0], alarmtimestr, sizeof(alarmtimestr));
-            if (s_alarms[0].enabled)
-              snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
-            else
-              snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
-          }
-        
-          menu_cell_basic_draw(ctx, cell_layer, "All Days", alarmstr, NULL);
-          break;
-        
-        default:
-          // Set single day alarm
-          dayname(cell_index->row-2, daystr, sizeof(daystr));
-          gen_alarm_str(&s_alarms[cell_index->row-2], alarmtimestr, sizeof(alarmtimestr));
-          if (s_alarms[cell_index->row-2].enabled)
-            snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
-          else
-            snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
-          menu_cell_basic_draw(ctx, cell_layer, daystr, alarmstr, NULL);
-      }
+    // Set One-Time alarm
+    gen_alarm_str(s_onetime, alarmtimestr, sizeof(alarmtimestr));
+    if (s_onetime->enabled)
+      snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
+    else
+      snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
+
+    menu_cell_basic_draw(ctx, cell_layer, "One-Time Alarm", alarmstr, NULL);
+    break;
+
+    case 1:
+    // Set alarm time for all days
+    if (is_alarms_mixed()) {
+      strncpy(alarmstr, "Mixed - Hold to turn off", sizeof(alarmstr));
+    } else {
+      gen_alarm_str(&s_alarms[0], alarmtimestr, sizeof(alarmtimestr));
+      if (s_alarms[0].enabled)
+        snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
+      else
+        snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
+    }
+
+    menu_cell_basic_draw(ctx, cell_layer, "All Days", alarmstr, NULL);
+    break;
+
+    default:
+    // Set single day alarm
+    dayname(cell_index->row-2, daystr, sizeof(daystr));
+    gen_alarm_str(&s_alarms[cell_index->row-2], alarmtimestr, sizeof(alarmtimestr));
+    if (s_alarms[cell_index->row-2].enabled)
+      snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn off", alarmtimestr);
+    else
+      snprintf(alarmstr, sizeof(alarmstr), "%s - Hold to turn on", alarmtimestr);
+    menu_cell_basic_draw(ctx, cell_layer, daystr, alarmstr, NULL);
+    break;
   }
 }
 
@@ -142,80 +139,71 @@ static void alarm_set(int8_t day, uint8_t hour, uint8_t minute) {
 
 // Process menu item select clicks
 static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
-  
-  switch (cell_index->section) {
+  switch (cell_index->row) {
     case 0:
-      switch (cell_index->row) {
-        case 0:
-          show_alarmtime(-2, 
-                         s_onetime->enabled ? s_onetime->hour : 7,
-                         s_onetime->enabled ? s_onetime->minute : 0,
-                         alarm_set);
-          break;
-        case 1:
-          if (is_alarms_mixed())
-            show_alarmtime(-1, 7, 0, alarm_set);
-          else
-            show_alarmtime(-1, 
-                           s_alarms[0].enabled ? s_alarms[0].hour : 7, 
-                           s_alarms[0].enabled ? s_alarms[0].minute : 0, 
-                           alarm_set);
-            
-          break;
-        default:
-          show_alarmtime(cell_index->row-2, 
-                         s_alarms[cell_index->row-2].enabled ? s_alarms[cell_index->row-2].hour : 7, 
-                         s_alarms[cell_index->row-2].enabled ? s_alarms[cell_index->row-2].minute : 0, 
-                         alarm_set);
-      }
-      break;
-  }
+    show_alarmtime(-2, 
+                   s_onetime->enabled ? s_onetime->hour : 7,
+                   s_onetime->enabled ? s_onetime->minute : 0,
+                   alarm_set);
+    break;
+    case 1:
+    if (is_alarms_mixed())
+      show_alarmtime(-1, 7, 0, alarm_set);
+    else
+      show_alarmtime(-1, 
+                     s_alarms[0].enabled ? s_alarms[0].hour : 7, 
+                     s_alarms[0].enabled ? s_alarms[0].minute : 0, 
+                     alarm_set);
 
+    break;
+    default:
+    show_alarmtime(cell_index->row-2, 
+                   s_alarms[cell_index->row-2].enabled ? s_alarms[cell_index->row-2].hour : 7, 
+                   s_alarms[cell_index->row-2].enabled ? s_alarms[cell_index->row-2].minute : 0, 
+                   alarm_set);
+    break;
+  }
 }
 
 // Process menu item long select clicks (Toggles alarms on/off)
 static void menu_longselect_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
-  switch (cell_index->section) {
+  switch (cell_index->row) {
     case 0:
-      switch (cell_index->row) {
-        case 0:
-          if (s_onetime->enabled) {
-            s_onetime->enabled = false;  
-          } else {
-            s_onetime->enabled = true;
-            s_onetime->hour = 7;
-            s_onetime->minute = 0;
-          }
-          break;
-        case 1:
-          if (is_alarms_mixed()) {
-            for (uint8_t i = 0; i <= 6; i++)
-              s_alarms[i].enabled = false;
-          } else {
-            for (uint8_t i = 0; i <= 6; i++) {
-              if (s_alarms[i].enabled) {
-                s_alarms[i].enabled = false;
-              } else {
-                s_alarms[i].enabled = true;
-                s_alarms[i].hour = 7;
-                s_alarms[i].minute = 0;
-              }
-            }
-          }
-          break;
-        default:
-          if (s_alarms[cell_index->row-2].enabled) {
-            s_alarms[cell_index->row-2].enabled = false;
-          } else {
-            s_alarms[cell_index->row-2].enabled = true;
-            s_alarms[cell_index->row-2].hour = 7;
-            s_alarms[cell_index->row-2].minute = 0;
-          }
+    if (s_onetime->enabled) {
+      s_onetime->enabled = false;  
+    } else {
+      s_onetime->enabled = true;
+      s_onetime->hour = 7;
+      s_onetime->minute = 0;
+    }
+    break;
+    case 1:
+    if (is_alarms_mixed()) {
+      for (uint8_t i = 0; i <= 6; i++)
+        s_alarms[i].enabled = false;
+    } else {
+      for (uint8_t i = 0; i <= 6; i++) {
+        if (s_alarms[i].enabled) {
+          s_alarms[i].enabled = false;
+        } else {
+          s_alarms[i].enabled = true;
+          s_alarms[i].hour = 7;
+          s_alarms[i].minute = 0;
+        }
       }
-      layer_mark_dirty(menu_layer_get_layer(alarms_layer));
-      break;
+    }
+    break;
+    default:
+    if (s_alarms[cell_index->row-2].enabled) {
+      s_alarms[cell_index->row-2].enabled = false;
+    } else {
+      s_alarms[cell_index->row-2].enabled = true;
+      s_alarms[cell_index->row-2].hour = 7;
+      s_alarms[cell_index->row-2].minute = 0;
+    }
+    break;
   }
-
+  layer_mark_dirty(menu_layer_get_layer(alarms_layer));
 }
 
 static void handle_window_unload(Window* window) {

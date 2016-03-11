@@ -28,8 +28,23 @@ static Layer *clock_layer;
 static Layer *onoff_layer;
 static Layer *info_layer;
 
-static void draw_onoff(Layer *layer, GContext *ctx) {
+static void draw_box(Layer *layer, GContext *ctx, GColor border_color, GColor back_color, GColor text_color, char *text) {
   GRect bounds = layer_get_bounds(layer);
+  graphics_context_set_fill_color(ctx, back_color);
+  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0), GCornersAll);
+  IF_3(graphics_context_set_stroke_width(ctx, 3)); 
+  graphics_context_set_stroke_color(ctx, border_color);
+  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0));
+  graphics_context_set_text_color(ctx, text_color);
+  GSize text_size = graphics_text_layout_get_content_size(text, s_res_gothic_18_bold, 
+                                                          GRect(5, 5, bounds.size.w-10, bounds.size.h-2), 
+                                                          GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
+  graphics_draw_text(ctx, text, s_res_gothic_18_bold, 
+                     GRect(5, ((bounds.size.h-text_size.h)/2)-4, bounds.size.w-10, text_size.h), 
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+}
+
+static void draw_onoff(Layer *layer, GContext *ctx) {
   GColor border_color;
   GColor fill_color;
 #ifdef PBL_COLOR
@@ -51,18 +66,7 @@ static void draw_onoff(Layer *layer, GContext *ctx) {
   border_color = GColorWhite;
   fill_color = GColorBlack;
 #endif
-  graphics_context_set_fill_color(ctx, fill_color);
-  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0), GCornersAll);
-  IF_3(graphics_context_set_stroke_width(ctx, 3)); 
-  graphics_context_set_stroke_color(ctx, border_color);
-  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0));
-  graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
-  GSize text_size = graphics_text_layout_get_content_size(s_onoff_text, s_res_gothic_18_bold, 
-                                                          GRect(5, 5, bounds.size.w-10, bounds.size.h-10), 
-                                                          GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
-  graphics_draw_text(ctx, s_onoff_text, s_res_gothic_18_bold, 
-                     GRect(5, ((bounds.size.h-text_size.h)/2)-4, bounds.size.w-10, text_size.h), 
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  draw_box(layer, ctx, border_color, fill_color, COLOR_FALLBACK(GColorBlack, GColorWhite), s_onoff_text);
 }
 
 static void draw_clock(Layer *layer, GContext *ctx) {
@@ -80,19 +84,8 @@ static void draw_clock(Layer *layer, GContext *ctx) {
 }
 
 static void draw_info(Layer *layer, GContext *ctx) {
-  GRect bounds = layer_get_bounds(layer);
-  graphics_context_set_fill_color(ctx, COLOR_FALLBACK(GColorPictonBlue, GColorBlack));
-  graphics_fill_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0), GCornersAll);
-  IF_3(graphics_context_set_stroke_width(ctx, 3)); 
-  graphics_context_set_stroke_color(ctx, COLOR_FALLBACK(GColorBlueMoon, GColorWhite));
-  graphics_draw_round_rect(ctx, layer_get_bounds(layer), PBL_IF_RECT_ELSE(8, 0));
-  graphics_context_set_text_color(ctx, COLOR_FALLBACK(GColorBlack, GColorWhite));
-  GSize text_size = graphics_text_layout_get_content_size(s_info, s_res_gothic_18_bold, 
-                                                          GRect(5, 5, bounds.size.w-10, bounds.size.h-2), 
-                                                          GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
-  graphics_draw_text(ctx, s_info, s_res_gothic_18_bold, 
-                     GRect(5, ((bounds.size.h-text_size.h)/2)-4, bounds.size.w-10, text_size.h), 
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  draw_box(layer, ctx, COLOR_FALLBACK(GColorBlueMoon, GColorWhite), COLOR_FALLBACK(GColorPictonBlue, GColorBlack),
+          COLOR_FALLBACK(GColorBlack, GColorWhite), s_info);
 }
 
 static void initialise_ui(void) {
@@ -237,11 +230,14 @@ void update_autoclose_timeout(uint8_t timeout) {
 }
 
 // Updates the UI to show alarm as active or not
-void show_alarm_ui(bool on) {
+void show_alarm_ui(bool on, bool goob) {
   if (on) {
     s_onoff_mode = MODE_ACTIVE;
     stop_autoclose_timer();
-    set_onoff_text("WAKEY! WAKEY!");
+    if (goob)
+      set_onoff_text("GET UP!");
+    else
+      set_onoff_text("WAKEY! WAKEY!");
     update_info("Click to snooze\n2 clicks to stop ");
     action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_snooze);
     action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_snooze);
@@ -252,30 +248,21 @@ void show_alarm_ui(bool on) {
   }
 }
 
-// Update the main window to show that an active alarm is currently snoozed
-void show_snooze(time_t snooze_time) {
+// Update the main window to show snoozing, smart alarm monitoring, or Get Out Of Bed alarm monitoring
+void show_status(time_t alarm_time, status_enum status) {
   s_onoff_mode = MODE_ACTIVE;
   stop_autoclose_timer();
-  set_onoff_text("SNOOZING");
-  
-  struct tm *t = localtime(&snooze_time);
-  
-  char time_str[8];
-  gen_time_str(t->tm_hour, t->tm_min, time_str, sizeof(time_str));
-  
-  char info[40];
-  snprintf(info, sizeof(info), "Until: %s\n2 clicks to stop", time_str);
-  update_info(info);
-  
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_snooze);
-  action_bar_layer_set_icon(action_layer, BUTTON_ID_DOWN, s_res_img_snooze);
-}
-
-// Update the main window to show that the Smart Alarm is monitoring
-void show_monitoring(time_t alarm_time) {
-  s_onoff_mode = MODE_ACTIVE;
-  stop_autoclose_timer();
-  set_onoff_text("SMART ALARM\nACTIVE");
+  switch (status) {
+    case S_Snoozing:
+      set_onoff_text("SNOOZING");
+      break;
+    case S_SmartMonitoring:
+      set_onoff_text("SMART ALARM\nACTIVE");
+      break;
+    case S_GooBMonitoring:
+      set_onoff_text("GET OUT OF BED\nMONITORING");
+      break;
+  }
   
   struct tm *t = localtime(&alarm_time);
   
@@ -283,7 +270,7 @@ void show_monitoring(time_t alarm_time) {
   gen_time_str(t->tm_hour, t->tm_min, time_str, sizeof(time_str));
   
   char info[40];
-  snprintf(info, sizeof(info), "Alarm: %s\n2 clicks to stop", time_str);
+  snprintf(info, sizeof(info), "%s: %s\n2 clicks to stop", (status == S_Snoozing ? "Until" : "Alarm"), time_str);
   update_info(info);
   
   action_bar_layer_set_icon(action_layer, BUTTON_ID_UP, s_res_img_snooze);

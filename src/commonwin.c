@@ -7,7 +7,7 @@ Window* window_create_fullscreen(Layer **root_layer, GRect *bounds) {
   *root_layer = window_get_root_layer(win);
   *bounds = layer_get_bounds(*root_layer); 
   window_set_background_color(win, GColorBlack);
-  IF_2(bounds.size.h += 16);
+  IF_2(bounds->size.h += 16);
   return win;
 }
 

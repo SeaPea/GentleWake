@@ -50,6 +50,12 @@ typedef enum VibePatterns {
   VP_NSG2Snooze = 2
 } VibePatterns;
 
+typedef enum GooBMode {
+  GM_Off = 0,
+  GM_AfterAlarm = 1,
+  GM_AfterStop = 2
+} GooBMode;
+
 struct Settings_st {
   uint8_t snooze_delay;
   bool dynamic_snooze;
@@ -63,6 +69,8 @@ struct Settings_st {
   VibePatterns vibe_pattern;
   alarm one_time_alarm;
   uint8_t autoclose_timeout;
+  GooBMode goob_mode;
+  uint8_t goob_monitor_period;
 } __attribute__((__packed__));
 
 typedef enum AlarmDay {

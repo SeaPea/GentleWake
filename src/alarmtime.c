@@ -180,7 +180,7 @@ void show_alarmtime(int8_t day, uint8_t hour, uint8_t minute, AlarmTimeCallBack 
   // Store pointer to callback for when done
   s_set_event = set_event;
   
-  char *daystr;
+  char daystr[10];
   
   // Generate alarm screen time
   switch (day) {
@@ -191,10 +191,10 @@ void show_alarmtime(int8_t day, uint8_t hour, uint8_t minute, AlarmTimeCallBack 
       strncpy(s_alarmtitle, "Alarm Every Day", MAX_TITLE);
       break;
     default:
-      daystr = malloc(10);
       dayname(day, daystr, 10);
       snprintf(s_alarmtitle, MAX_TITLE, "%s Alarm", daystr);
-      free(daystr);
+      //strncpy(s_alarmtitle, "Alarm", MAX_TITLE);
+      break;
   }
   
   update_alarmtime();

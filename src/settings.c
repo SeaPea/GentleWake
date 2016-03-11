@@ -10,26 +10,33 @@
 // Top-Level Settings Screen
   
 #define NUM_MENU_SECTIONS 5
+
 #define NUM_MENU_ALARM_ITEMS 1
 #define NUM_MENU_MISC_ITEMS 6
-#define NUM_MENU_SMART_ITEMS 3
+#define NUM_MENU_SMART_ITEMS 4
 #define NUM_MENU_DST_ITEMS 2
 #define NUM_MENU_ABOUT_ITEMS 1
+
 #define MENU_ALARM_SECTION 0
 #define MENU_MISC_SECTION 1
 #define MENU_SMART_SECTION 2
 #define MENU_DST_SECTION 3
 #define MENU_ABOUT_SECTION 4
+
 #define MENU_ALARMS_ITEM 0
+
 #define MENU_SNOOZEDELAY_ITEM 0
 #define MENU_DYNAMICSNOOZE_ITEM 1
 #define MENU_EASYLIGHT_ITEM 2
 #define MENU_KONAMICODE_ITEM 3
 #define MENU_VIBEPATTERN_ITEM 4
 #define MENU_AUTOCLOSE_ITEM 5
+
 #define MENU_SMARTALARM_ITEM 0
 #define MENU_SMARTPERIOD_ITEM 1
 #define MENU_MOVESENSITIVITY_ITEM 2
+#define MENU_GOOB_ITEM 3
+
 #define MENU_DSTDAYCHECK_ITEM 0
 #define MENU_DSTDAYHOUR_ITEM 1
 #define MENU_VERSION_ITEM 0
@@ -144,6 +151,7 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
   char monitor_str[15];
   char dst_check_hour_str[6];
   char autoclose_str[17];
+  char goob_str[27];
   
   switch (cell_index->section) {
     case MENU_ALARM_SECTION:
@@ -290,6 +298,21 @@ static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuI
               break;
           }
           break;
+        case MENU_GOOB_ITEM:
+          // Get Out Of Bed Setting
+          switch (s_settings->goob_mode) {
+            case GM_Off:
+              strcpy(goob_str, "Off");
+              break;
+            case GM_AfterAlarm:
+              snprintf(goob_str, sizeof(goob_str), "%d min. after alarm start", s_settings->goob_monitor_period);
+              break;
+            case GM_AfterStop:
+              snprintf(goob_str, sizeof(goob_str), "%d min. after stop alarm", s_settings->goob_monitor_period);
+              break;
+          }
+          menu_cell_basic_draw(ctx, cell_layer, "Get out of Bed Alm", goob_str, NULL);
+          break;
       }
       break;
     
@@ -398,6 +421,20 @@ static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, v
           break;
         case MENU_MOVESENSITIVITY_ITEM:
           s_settings->sensitivity = (s_settings->sensitivity == MS_HIGH ? MS_LOW : s_settings->sensitivity + 1);
+          break;
+        case MENU_GOOB_ITEM:
+          if (s_settings->goob_mode == GM_AfterStop && s_settings->goob_monitor_period == 30) {
+            s_settings->goob_mode = GM_Off;
+            s_settings->goob_monitor_period = 5;
+          } else if (s_settings->goob_mode == GM_Off) {
+            s_settings->goob_mode = GM_AfterAlarm;
+            s_settings->goob_monitor_period = 5;
+          } else if (s_settings->goob_mode == GM_AfterAlarm) {
+            s_settings->goob_mode = GM_AfterStop;
+          } else {
+            s_settings->goob_mode = GM_AfterAlarm;
+            s_settings->goob_monitor_period += 5;
+          }
           break;
       }
       break;
