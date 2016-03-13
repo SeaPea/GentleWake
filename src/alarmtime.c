@@ -17,7 +17,7 @@ static uint8_t s_hour;
 static uint8_t s_minute;
 static char s_hourstr[LEN_HOUR];
 static char s_minutestr[LEN_MIN];
-static char *s_alarmtitle;
+static char s_alarmtitle[MAX_TITLE];
 static enum part s_selected = HOUR;
 static AlarmTimeCallBack s_set_event;
 
@@ -64,7 +64,6 @@ static void draw_time(Layer *layer, GContext *ctx) {
 }
 
 static void initialise_ui(void) {
-  s_alarmtitle = malloc(MAX_TITLE);
   
   GRect bounds;
   Layer *root_layer = NULL;
@@ -89,8 +88,6 @@ static void destroy_ui(void) {
   gbitmap_destroy(s_res_img_upaction);
   gbitmap_destroy(s_res_img_nextaction);
   gbitmap_destroy(s_res_img_downaction);
-  
-  free(s_alarmtitle);
 }
 
 static void handle_window_unload(Window* window) {

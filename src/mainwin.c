@@ -13,8 +13,8 @@ static bool s_alarms_on;
 static char s_info[45];
 static char s_onoff_text[40];
 static enum onoff_modes s_onoff_mode;
-static uint8_t s_autoclose_timeout = 0;
-static AppTimer *s_autoclose_timer = NULL;
+static uint8_t s_autoclose_timeout;
+static AppTimer *s_autoclose_timer;
 
 static GBitmap *s_res_img_snooze;
 

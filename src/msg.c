@@ -10,13 +10,13 @@
 
 static char *s_title;
 static char *s_msg;
-static AppTimer *s_autohide = NULL;
+static AppTimer *s_autohide;
 
 static Window *s_window;
 static GFont s_res_gothic_28_bold;
 static GFont s_res_gothic_18_bold;
 static Layer *s_msg_layer;
-static GTextAttributes *s_attributes = NULL;
+static GTextAttributes *s_attributes;
 
 static void draw_msg(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer); 

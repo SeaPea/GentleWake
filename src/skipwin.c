@@ -6,9 +6,9 @@
 #define LEN_DATE 12
 
 static SkipSetCallBack s_set_event;
-static time_t s_skip_until = 0;
+static time_t s_skip_until;
 static char *s_date;
-static bool s_show_noskip = false;
+static bool s_show_noskip;
   
 static Window *s_window;
 static GBitmap *s_res_img_upaction;
