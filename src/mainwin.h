@@ -3,7 +3,8 @@
 typedef enum status_enum {
   S_Snoozing,
   S_SmartMonitoring,
-  S_GooBMonitoring
+  S_GooBMonitoring,
+  S_GooBSnooze
 } status_enum;
 
 void show_mainwin(uint8_t autoclose_timeout);

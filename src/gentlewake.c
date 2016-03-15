@@ -328,11 +328,12 @@ static int8_t update_alarm_display() {
   return next_alarm;
 }
 
+// Shows details about a wakeup error 
 static void show_wakeup_error(WakeupId result, time_t wakeup_time, char *wakeup_type) {
   char msg[150];
           
-  // If ID is still negative, show error message
   if (result == E_RANGE) {
+    // Another wakeup scheduled within the same time period
     char daystr[10];
     char timestr[8];
     struct tm *wt = localtime(&wakeup_time);
@@ -348,6 +349,7 @@ static void show_wakeup_error(WakeupId result, time_t wakeup_time, char *wakeup_
              "Unable to set %s alarm due to another alarm on %s at %s +/-5 minutes in another app. Please either change the alarm time here or the other app.", 
              wakeup_type, daystr, timestr);
   } else {
+    // Something else went wrong
     snprintf(msg, sizeof(msg),
              "Unknown error while setting %s alarm (%d). A factory reset may be required if this happens again",
              wakeup_type, (int)result);
@@ -414,7 +416,7 @@ static void set_wakeup_delayed(void *data) {
     
     time_t curr_time = time(NULL);
     
-    if (s_state.snoozing || s_alarm_active) {
+    if (s_state.snoozing || s_alarm_active || s_goob_active) {
       // if snoozing set a wakeup for the snooze period
       // (or even if the alarm is active set a snooze wakeup in case something happens during the alarm)
       
@@ -431,12 +433,15 @@ static void set_wakeup_delayed(void *data) {
       
       s_snooze_until = curr_time + snooze_period;
       
-      
-      
-      // Set snooze if GooB not enabled or snooze time is still before GooB time 
-      if (s_snooze_until < s_goob_time) {
+      // Set snooze if GooB After Alarm not enabled or snooze time is still before GooB time 
+      if (s_settings.goob_mode != GM_AfterAlarm || s_snooze_until < s_goob_time || s_goob_active) {
         // Show the snooze wakeup time
-        if (s_state.snoozing) show_status(s_snooze_until, S_Snoozing);
+        if (s_state.snoozing) {
+          if (s_goob_active)
+            show_status(s_snooze_until, S_GooBSnooze);
+          else
+            show_status(s_snooze_until, S_Snoozing);
+        } 
         
         // Schedule the wakeup
         s_wakeup_id = wakeup_schedule_robust(s_snooze_until, WAKEUP_REASON_SNOOZE, true, 0, 0);
@@ -455,7 +460,7 @@ static void set_wakeup_delayed(void *data) {
           // If ID is still negative, show error message
           show_wakeup_error(s_wakeup_goob_id, s_goob_time, "Get Out Of Bed");
         else if (s_goob_time <= s_snooze_until && s_state.snoozing)
-          show_status(s_goob_time, S_GooBMonitoring);
+          show_status(s_goob_time, S_GooBSnooze);
       }
     } else {
       // Set wakeup for next alarm
@@ -574,9 +579,9 @@ static void reset_alarm() {
   int8_t next;
   
   s_alarm_active = false;
+  s_goob_active = false;
   set_snoozing(false);
   set_monitoring(false);
-  set_goob(false, s_goob_time);
   set_snoozecount(0);
   s_arm_swing_start = 0;
   s_arm_swing_count = 0;
@@ -594,6 +599,7 @@ static void reset_alarm() {
       start_accel();
     }
   } else {
+    set_goob(false, s_goob_time);
     if (s_settings.one_time_alarm.enabled) set_onetime_enabled(false);
     set_lastresetday(time(NULL));
     
@@ -853,7 +859,6 @@ static void start_alarm() {
   
   if (s_settings.goob_mode == GM_AfterAlarm) {
     // Start Get Out Of Bed monitoring if set to start after alarm start
-    //set_goob(true, time(NULL) + (s_settings.goob_monitor_period * 60));
     set_goob(true, s_goob_time == 0 || s_goob_time < time(NULL) ? time(NULL) + (s_settings.goob_monitor_period * 60) : s_goob_time);
     start_accel();
   }
@@ -889,12 +894,6 @@ static void unsub_accel_delay(void *data) {
     s_accel_service_sub = false;
   }
 }
-
-// Integer division with rounding
-// int16_t divide(int16_t n, int16_t d)
-// {
-//   return ((n < 0) ^ (d < 0)) ? ((n - d/2) / d) : ((n + d/2) / d);
-// }
 
 // Handle accelerometer data while smart alarm is active or alarm is active/snoozing
 // to detect stirring or lifting watch for Easy Light respectively
@@ -971,10 +970,14 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
       // Monitor for movement that will cancel the Get Out Of Bed alarm
       // (5 arm swings with no more than 2 seconds between swings will cancel alarm)
       
-      if (time(NULL) - s_arm_swing_start > 2) {
+      time_t curr_time = time(NULL);
+      
+      if (curr_time - s_arm_swing_start > 2) {
         // Reset arm swing stats if more than 2 seconds have passed since last registered swing
-        //APP_LOG(APP_LOG_LEVEL_DEBUG, "Resetting arm swing stats");
-        s_arm_swing_start = time(NULL);
+#ifdef DEBUG
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "Resetting arm swing stats");
+#endif
+        s_arm_swing_start = curr_time;
         s_arm_swing_count = 0;
         s_last_arm_swing_dir = -1;
         s_x_filtered = data[0].x;
@@ -984,10 +987,8 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
       for (uint32_t i = 0; i < num_samples; i++) {
         if (!data[i].did_vibrate) {
           // Perform single pass IIR filter on accelerometer values to get smoother motion
-//           s_x_filtered = (divide(s_x_filtered * FILTER_K_NUM, FILTER_K_DEN)) + divide((FILTER_K_DEN - FILTER_K_NUM) * data[i].x, FILTER_K_DEN);
-//           s_y_filtered = (divide(s_y_filtered * FILTER_K_NUM, FILTER_K_DEN)) + divide((FILTER_K_DEN - FILTER_K_NUM) * data[i].y, FILTER_K_DEN);
           s_x_filtered = (s_x_filtered >> 1) + (data[i].x >> 1);
-          s_y_filtered = (s_y_filtered >> 1) + (data[i].y >> 1);;
+          s_y_filtered = (s_y_filtered >> 1) + (data[i].y >> 1);
           
           // Very simplistic arm swing detection
           if (s_x_filtered <= -500 || s_x_filtered >= 500) {
@@ -998,16 +999,20 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
               s_last_arm_swing_dir ^= true;
               if (s_last_arm_swing_dir) {
                 s_arm_swing_count++;
-                //APP_LOG(APP_LOG_LEVEL_DEBUG, "Arm swing count: %d", s_arm_swing_count);
+#ifdef DEBUG
+                APP_LOG(APP_LOG_LEVEL_DEBUG, "Arm swing count: %d", s_arm_swing_count);
+#endif
                 // Restart idle countdown
-                s_arm_swing_start = time(NULL);
+                s_arm_swing_start = curr_time;
               }
             }
           }
         }
       }
       
-      //APP_LOG(APP_LOG_LEVEL_DEBUG, "GooB Monitoring - x: %d, y: %d", s_x_filtered, s_y_filtered);
+#ifdef DEBUG
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "GooB Monitoring - x: %d, y: %d", s_x_filtered, s_y_filtered);
+#endif
       
       if (s_arm_swing_count >= 5) reset_alarm();
     }
@@ -1040,13 +1045,10 @@ static void wakeup_handler(WakeupId id, int32_t reason) {
     set_lastresetday(0);
     // Also reset skip
     set_skipuntil(0);
-    
-    if (reason != WAKEUP_REASON_SNOOZE) {
-      set_snoozecount(0);
-    }
-    
+  
     if (reason == WAKEUP_REASON_MONITOR) {
       // Start monitoring activity for stirring
+      set_snoozecount(0);
       set_monitoring(true);
       s_last_x = 0;
       s_last_y = 0;
@@ -1054,15 +1056,17 @@ static void wakeup_handler(WakeupId id, int32_t reason) {
       s_movement = 0;
       // Set wakeup for the actual alarm time in case we're dead to the world or something goes wrong during monitoring
       set_wakeup(get_next_alarm());
-    } else if (reason == WAKEUP_REASON_GOOB) {
+    } else if (reason == WAKEUP_REASON_GOOB || s_goob_active || 
+               (s_settings.goob_mode != GM_Off && s_goob_time != 0 && s_goob_time < time(NULL))) {
       start_goob_alarm();
     } else {
       // Activate the alarm
+      if (reason != WAKEUP_REASON_SNOOZE) set_snoozecount(0);
       start_alarm();
     }
     
     // Monitor movement for either Smart Alarm or Easy Light
-    if (s_state.monitoring || s_settings.easy_light) {
+    if (s_state.monitoring || s_state.goob_monitoring || s_settings.easy_light) {
       start_accel();
     }
   }
@@ -1129,11 +1133,6 @@ static void init(void) {
   s_alarms_on = persist_bool(ALARMSON_KEY, true);
   s_wakeup_id = persist_int(WAKEUPID_KEY, 0);
   s_wakeup_goob_id = persist_int(WAKEUPGOOBID_KEY, 0);
-//   persist_read_data(LASTRESETDATE_KEY, &s_last_reset_day, sizeof(s_last_reset_day));
-//   s_snooze_count = persist_int(SNOOZECOUNT_KEY, 0);
-//   s_snoozing = persist_read_bool(SNOOZINGON_KEY);
-//   s_monitoring = persist_read_bool(MONITORINGON_KEY);
-//   s_goob_monitoring = persist_read_bool(GOOBMONITORINGON_KEY);
   persist_read_data(STATE_KEY, &s_state, sizeof(s_state));
   persist_read_data(SKIPUNTIL_KEY, &s_skip_until, sizeof(s_skip_until));
   persist_read_data(GOOBALARMTIME_KEY, &s_goob_time, sizeof(s_goob_time));

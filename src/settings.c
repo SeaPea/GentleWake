@@ -732,6 +732,8 @@ static void click_config_provider(void *context) {
   window_long_click_subscribe(BUTTON_ID_SELECT, 1000, longselect_click_handler, NULL);
   window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
   window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
+  window_single_repeating_click_subscribe(BUTTON_ID_UP, 250, up_click_handler);
+  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 250, down_click_handler);
 }
 
 static void handle_window_unload(Window* window) {

@@ -262,6 +262,9 @@ void show_status(time_t alarm_time, status_enum status) {
     case S_GooBMonitoring:
       set_onoff_text("GET OUT OF BED\nMONITORING");
       break;
+    case S_GooBSnooze:
+      set_onoff_text("SNOOZING\nGET OUT OF BED\nMONITORING");
+      break;
   }
   
   struct tm *t = localtime(&alarm_time);
