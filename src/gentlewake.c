@@ -737,7 +737,7 @@ static void show_stopwin() {
 }
 
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (!s_state.snoozing && !s_state.monitoring) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
     // Disable Back button click when snoozing or monitoring sleep so we don't accidentally exit
     
     if (s_alarm_active || s_goob_active) {
@@ -753,7 +753,7 @@ static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (!s_state.snoozing && !s_state.monitoring) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
     // Disable Up button when snoozing or monitoring
     
     if (s_alarm_active || s_goob_active) {
@@ -801,7 +801,7 @@ static void up_longclick_handler(ClickRecognizerRef recognizer, void *context) {
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   // Single click snoozes when alarm active, Select button single click is disabled otherwise
-  if (!s_state.snoozing && !s_state.monitoring) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
     if (s_alarm_active || s_goob_active) 
       snooze_alarm();
   } else {
@@ -810,7 +810,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (!s_state.snoozing && !s_state.monitoring) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
     // Disable Up button when snoozing or monitoring
     
     if (s_alarm_active || s_goob_active)
