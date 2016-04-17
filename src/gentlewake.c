@@ -405,7 +405,7 @@ static void set_wakeup_delayed(void *data) {
   int8_t next_alarm = s_next_alarm;
   
   // Clear any previous wakeup time
-  if (s_wakeup_id != 0 || s_wakeup_goob_id != 0) {
+  if (s_state.snoozing || s_wakeup_id != 0 || s_wakeup_goob_id != 0) {
     wakeup_cancel_all();
     s_wakeup_id = 0;
     s_wakeup_goob_id = 0;
@@ -589,7 +589,12 @@ static void reset_alarm() {
   
   if (!s_state.goob_monitoring && !s_goob_active && s_settings.goob_mode == GM_AfterStop) {
     time_t curr_time = time(NULL);
+    // Clear any snoozes, etc.
+    wakeup_cancel_all();
+    s_wakeup_id = 0;
+    persist_write_int(WAKEUPID_KEY, s_wakeup_id);
     set_goob(true, curr_time + (s_settings.goob_monitor_period * 60));
+    // Set GOOB wakeup
     s_wakeup_goob_id = wakeup_schedule_robust(s_goob_time, WAKEUP_REASON_GOOB, false, 60*((s_goob_time < curr_time+300) ? 1 : -1), 5);
     persist_write_int(WAKEUPGOOBID_KEY, s_wakeup_goob_id);
     if (s_wakeup_goob_id < 0)
@@ -599,7 +604,7 @@ static void reset_alarm() {
       start_accel();
     }
   } else {
-    set_goob(false, s_goob_time);
+    set_goob(false, 0);
     if (s_settings.one_time_alarm.enabled) set_onetime_enabled(false);
     set_lastresetday(time(NULL));
     
@@ -737,7 +742,7 @@ static void show_stopwin() {
 }
 
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring || s_goob_active)) {
     // Disable Back button click when snoozing or monitoring sleep so we don't accidentally exit
     
     if (s_alarm_active || s_goob_active) {
@@ -753,7 +758,7 @@ static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring || s_goob_active)) {
     // Disable Up button when snoozing or monitoring
     
     if (s_alarm_active || s_goob_active) {
@@ -801,7 +806,7 @@ static void up_longclick_handler(ClickRecognizerRef recognizer, void *context) {
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   // Single click snoozes when alarm active, Select button single click is disabled otherwise
-  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring || s_goob_active)) {
     if (s_alarm_active || s_goob_active) 
       snooze_alarm();
   } else {
@@ -810,7 +815,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring)) {
+  if (!s_state.snoozing && !s_state.monitoring && (s_settings.goob_mode != GM_AfterStop || !s_state.goob_monitoring || s_goob_active)) {
     // Disable Up button when snoozing or monitoring
     
     if (s_alarm_active || s_goob_active)
@@ -1077,7 +1082,8 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   // Show the current time on the main screen
   if ((units_changed & MINUTE_UNIT) != 0) {
     update_clock();
-    if (!s_alarm_active && !s_state.snoozing && !s_state.monitoring) update_alarm_display();
+    if (!s_alarm_active && !s_goob_active && !s_state.snoozing && !s_state.monitoring && !s_state.goob_monitoring) 
+      update_alarm_display();
   }
 }
 
