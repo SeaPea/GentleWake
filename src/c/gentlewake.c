@@ -1019,7 +1019,10 @@ static void accel_handler(AccelData *data, uint32_t num_samples) {
       APP_LOG(APP_LOG_LEVEL_DEBUG, "GooB Monitoring - x: %d, y: %d", s_x_filtered, s_y_filtered);
 #endif
       
-      if (s_arm_swing_count >= 5) reset_alarm();
+      if (s_arm_swing_count >= 5) {
+        reset_alarm();
+        vibes_short_pulse();
+      }
     }
   } else if (s_accel_service_sub) {
     // Stop monitoring for movement if nothing is active
@@ -1194,9 +1197,104 @@ static void init(void) {
   s_loaded = true;
 }
 
+static void update_app_glance(AppGlanceReloadSession *session, size_t limit, void *context) {
+  if (limit < 3) return;
+  
+  int8_t next_alarm = get_next_alarm();
+  AppGlanceResult result;
+  
+  if (next_alarm == NEXT_ALARM_NONE) {
+    // Create the slice
+    const AppGlanceSlice slice = {
+      .layout = {
+        .subtitle_template_string = s_info
+      },
+      .expiration_time = APP_GLANCE_SLICE_NO_EXPIRATION
+    };
+    result = app_glance_add_slice(session, slice);
+  } else if (next_alarm == NEXT_ALARM_SKIPWEEK) {
+    const AppGlanceSlice slice = {
+      .layout = {
+        .subtitle_template_string = s_info
+      },
+      .expiration_time = s_skip_until
+    };
+    result = app_glance_add_slice(session, slice);
+  } else if (next_alarm == NEXT_ALARM_SNOOZE) {
+    const AppGlanceSlice slice = {
+      .layout = {
+        .subtitle_template_string = "SNOOZING"
+      },
+      .expiration_time = s_snooze_until
+    };
+    result = app_glance_add_slice(session, slice);
+  } else {
+    time_t offset = get_UTC_offset(NULL);
+    time_t alarm_time = alarm_to_timestamp(next_alarm);
+    time_t now = time(NULL) + offset; // Localtime for comparing day differences
+    
+    char glance_str[20];
+    char time_str[8];
+    
+    if (next_alarm == NEXT_ALARM_ONETIME)
+      gen_alarm_str(&(s_settings.one_time_alarm), time_str, sizeof(time_str));
+    else
+      gen_alarm_str(&s_alarms[next_alarm], time_str, sizeof(time_str));
+    
+    if (day_diff(now, alarm_time + offset) > 1) {
+      // Add glance with date until the day before the alarm
+      char day_str[4];
+      daynameshort(next_alarm, day_str, sizeof(day_str));
+      snprintf(glance_str, sizeof(glance_str), "%s: %s", day_str, time_str);
+      const AppGlanceSlice slice_future = {
+        .layout = {
+          .subtitle_template_string = glance_str
+        },
+        .expiration_time = strip_time(alarm_time) - offset - SECONDS_PER_DAY
+      };
+      result = app_glance_add_slice(session, slice_future);
+      
+      if (result != APP_GLANCE_RESULT_SUCCESS) {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Error adding AppGlanceSlice for future alarm: %d", result);
+      }
+    }
+    
+    if (day_diff(now, alarm_time + offset) >= 1) {
+      // Add glance for tomorrow until day of alarm
+      snprintf(glance_str, sizeof(glance_str), "Tomorrow: %s", time_str);
+      const AppGlanceSlice slice_tomorrow = {
+        .layout = {
+          .subtitle_template_string = glance_str
+        },
+        .expiration_time = strip_time(alarm_time) - offset
+      };
+      result = app_glance_add_slice(session, slice_tomorrow);
+      
+      if (result != APP_GLANCE_RESULT_SUCCESS) {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Error adding AppGlanceSlice for tomorrow alarm: %d", result);
+      }
+    }
+    
+    // Add glance for day of alarm
+    snprintf(glance_str, sizeof(glance_str), "Today: %s", time_str);
+    const AppGlanceSlice slice_today = {
+      .layout = {
+        .subtitle_template_string = glance_str
+      },
+      .expiration_time = alarm_time
+    };
+    result = app_glance_add_slice(session, slice_today);
+  }
+  
+  if (result != APP_GLANCE_RESULT_SUCCESS) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Error adding AppGlanceSlice: %d", result);
+  }
+}
+
 static void deinit(void) {
   
   if (s_accel_service_sub) accel_data_service_unsubscribe();
+  app_glance_reload(update_app_glance, NULL);
   
   hide_mainwin();
 }

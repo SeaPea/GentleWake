@@ -46,7 +46,7 @@ static void gen_konami_sequence() {
 
 // Gets the matching bitmap for a button code and whether it should show as selected (successfully pressed)
 static GBitmap* get_code_img(enum KonamiCodes code, bool selected, GContext *ctx) {
-#ifdef PBL_PLATFORM_APLITE
+#ifdef PBL_BW
   graphics_context_set_compositing_mode(ctx, (selected ? GCompOpAssignInverted : GCompOpAssign));
   if (code == KC_Up)
     return gbitmap_create_with_resource(RESOURCE_ID_IMAGE_UPACTION2);
